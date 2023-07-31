@@ -1,10 +1,11 @@
 import java.util.Collection;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
-public class LinkedList<E> implements List<E> {
+public class LinkedList<E> implements List<E>, Deque<E> {
     private class LinkedListNode {
         private E data;
         private LinkedListNode prev;
@@ -260,6 +261,50 @@ public class LinkedList<E> implements List<E> {
         }
     }
 
+    private class LinkedListDescendingIterator implements Iterator<E> {
+        LinkedListIterator it;
+
+        public LinkedListDescendingIterator() {
+            it = new LinkedListIterator(size());
+        }
+
+        /**
+         * Returns true if this list iterator has more elements when traversing the
+         * list.
+         * 
+         * @return whether the list iterator has a next element
+         */
+        public boolean hasNext() {
+            return it.hasPrevious();
+        }
+
+        /**
+         * Returns the next element in the list and advances the cursor position.
+         * 
+         * @return the next element in the list
+         * 
+         * @exception NoSuchElementException if the iteration has no next element
+         */
+        public E next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException("There is no next element.");
+            }
+            return it.previous();
+        }
+
+        /**
+         * Removes from the list the last element that was returned by next()
+         * 
+         * @exception IllegalStateException if neither next nor previous have been
+         *                                  called, or remove or add have been called
+         *                                  after the last call to next or previous
+         * 
+         */
+        public void remove() {
+            it.remove();
+        }
+    }
+
     LinkedListNode head;
     LinkedListNode foot;
     int size = 0;
@@ -271,6 +316,12 @@ public class LinkedList<E> implements List<E> {
         head.setNext(foot);
         foot.setPrev(head);
     }
+
+    /*
+     * 
+     * The following functions are part of the List interface.
+     * 
+     */
 
     /**
      * Appends the specified element to the end of this list.
@@ -417,11 +468,6 @@ public class LinkedList<E> implements List<E> {
         return true;
     }
 
-    // @exception ClassCastException if the object is incompatible with this list
-    public boolean equals(Object o) {
-        return false;
-    }
-
     /**
      * Returns the element at the specified position in this list.
      * 
@@ -532,7 +578,7 @@ public class LinkedList<E> implements List<E> {
      *                                      index >= size())
      */
     public ListIterator<E> listIterator(int index) {
-        if (index < 0 || index >= size()) {
+        if (index < 0 || index > size()) {
             throw new IndexOutOfBoundsException("Index may not be " + index + " on a LinkedList of size " + size());
         }
 
@@ -713,6 +759,266 @@ public class LinkedList<E> implements List<E> {
             ret[size()] = null;
         }
         return ret;
+    }
+
+    /*
+     * 
+     * The following functions are part of the Deque<E> interface.
+     * 
+     */
+
+    /**
+     * Inserts the specified element at the front of this list.
+     * 
+     * @param e
+     */
+    public void addFirst(E e) {
+        if (e == null) {
+            throw new NullPointerException("LinkedList may not contain null elements.");
+        }
+        this.add(0, e);
+    }
+
+    /**
+     * Appends the specified element to the end of this list.
+     *
+     * @param e element to be inserted
+     *
+     * @exception NullPointerException if element is null
+     */
+    public void addLast(E e) {
+        add(e);
+    }
+
+    /**
+     * Retrieves and removes the head of this list.
+     * 
+     * @return the element previously at the head of this list.
+     * 
+     * @exception NoSuchElementException if list is empty
+     */
+    public E remove() {
+        return removeFirst();
+    }
+
+    /**
+     * Retrieves and removes the first element of this list.
+     * 
+     * @return the element previously at the front
+     * 
+     * @exception NoSuchElementException if list is empty
+     */
+    public E removeFirst() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("This list is empty.");
+        }
+        return remove(0);
+    }
+
+    /**
+     * Removes the first occurrence of the specified element from this list.
+     * 
+     * @param o the element to be removed
+     * @return whether the element was present in the list
+     */
+    public boolean removeFirstOccurrence(Object o) {
+        return remove(o);
+    }
+
+    /**
+     * Removes the last occurrence of the specified element from this list.
+     * 
+     * @param o the element to be removed
+     * @return whether the element was present in the list
+     */
+    public boolean removeLastOccurrence(Object o) {
+        int i = lastIndexOf(o);
+        boolean ret = i != -1;
+        if (ret) {
+            remove(i);
+        }
+        return ret;
+    }
+
+    /**
+     * Retrieves and removes the last element of this list.
+     * 
+     * @return the element previously at the back
+     * 
+     * @exception NoSuchElementException if list is empty
+     */
+    public E removeLast() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("This list is empty.");
+        }
+        return remove(size() - 1);
+    }
+
+    /**
+     * Returns an iterator over the elements in this list in reverse sequential
+     * order.
+     * 
+     * @return an iterator in reverse sequential order
+     */
+    public Iterator<E> descendingIterator() {
+        return new LinkedListDescendingIterator();
+    }
+
+    /**
+     * Retrieves, but does not remove, the first element of this list.
+     * 
+     * @return the head of the list
+     */
+    public E element() {
+        return getFirst();
+    }
+
+    /**
+     * Retrieves, but does not remove, the first element of this list.
+     * 
+     * @return the head of the list
+     */
+    public E getFirst() {
+        return get(0);
+    }
+
+    /**
+     * Retrieves, but does not remove, the last element of this list.
+     * 
+     * @return the last element of the list
+     */
+    public E getLast() {
+        return get(size() - 1);
+    }
+
+    /**
+     * Inserts the specified element into the queue represented by this list.
+     * 
+     * @param e the element to be added to the list
+     * @return true
+     */
+    public boolean offer(E e) {
+        return offerLast(e);
+    }
+
+    public boolean offerFirst(E e) {
+        addFirst(e);
+        return true;
+    }
+
+    public boolean offerLast(E e) {
+        addLast(e);
+        return true;
+    }
+
+    /**
+     * Retrieves, but does not remove, the head of the queue represented by this
+     * list, or returns null if this list is empty.
+     * 
+     * @return the head of the list
+     */
+    public E peek() {
+        return peekFirst();
+    }
+
+    /**
+     * Retrieves, but does not remove, the first element of this list, or returns
+     * null if this list is empty.
+     * 
+     * @return the first element of this list, or null if it is empty
+     */
+    public E peekFirst() {
+        if (isEmpty()) {
+            return null;
+        }
+        return getFirst();
+    }
+
+    /**
+     * Retrieves, but does not remove, the last element of this list, or returns
+     * null if this list is empty.
+     * 
+     * @return the last element of this list, or null if it is empty
+     */
+    public E peekLast() {
+        if (isEmpty()) {
+            return null;
+        }
+        return getFirst();
+    }
+
+    /**
+     * Retrieves and removes the head of the queue represented by this list, or
+     * returns null if this list is empty.
+     * 
+     * @return the element that was removed, or null if it is empty
+     */
+    public E poll() {
+        return pollFirst();
+    }
+
+    /**
+     * Retrieves and removes the first element of this list, or returns null if
+     * this list is empty.
+     * 
+     * @return the element that was removed, or null if it is empty
+     */
+    public E pollFirst() {
+        if (isEmpty()) {
+            return null;
+        }
+        return removeFirst();
+    }
+
+    /**
+     * Retrieves and removes the last element of this list, or returns null if
+     * this list is empty.
+     * 
+     * @return the element that was removed, or null if it is empty
+     */
+    public E pollLast() {
+        if (isEmpty()) {
+            return null;
+        }
+        return removeLast();
+    }
+
+    /**
+     * Pops an element from the stack represented by this list.
+     * 
+     * @return the element that was popped
+     */
+    public E pop() {
+        return removeFirst();
+    }
+
+    /**
+     * Pushes an element onto the stack represented by this list.
+     * 
+     * @param e the element to be added
+     */
+    public void push(E e) {
+        addFirst(e);
+    }
+
+    /*
+     * The following functions Override functions from the Object class.
+     */
+
+    public boolean equals(Object o) {
+        if (o instanceof LinkedList) {
+            LinkedList<?> lhs = (LinkedList<?>) o;
+            Iterator<E> it = iterator();
+            Iterator<?> ot = lhs.iterator();
+
+            while (it.hasNext() && ot.hasNext()) {
+                if (!it.next().equals(ot.next())) {
+                    return false;
+                }
+            }
+            return (!it.hasNext() && !ot.hasNext());
+        }
+        return false;
     }
 
     public String toString() {
