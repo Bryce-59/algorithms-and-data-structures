@@ -434,7 +434,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * @return true if element is present, else false
      * 
      * @exception NullPointerException if element is null
-     * @exception ClassCastException   if the object is incompatible with this list
      */
     public boolean contains(Object o) {
         if (o == null) {
@@ -452,7 +451,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * 
      * @exception NullPointerException if element is null or if the collection is
      *                                 null
-     * @exception ClassCastException   if the object is incompatible with this list
      */
     public boolean containsAll(Collection<?> c) {
         if (c == null) {
@@ -494,7 +492,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      *         else -1
      * 
      * @exception NullPointerException if element is null
-     * @exception ClassCastException   if the object is incompatible with this list
      */
     public int indexOf(Object o) {
         if (o == null) {
@@ -539,7 +536,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      *         else -1
      * 
      * @exception NullPointerException if element is null
-     * @exception ClassCastException   if the object is incompatible with this list
      */
     public int lastIndexOf(Object o) {
         if (o == null) {
@@ -614,7 +610,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * @return whether or not an instance of the object was present in the list
      * 
      * @exception NullPointerException if object is null
-     * @exception ClassCastException   if the object is incompatible with this list
      */
     public boolean remove(Object o) {
         if (o == null) {
@@ -639,7 +634,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * @return whether the list changed as a result of the operation
      * 
      * @exception NullPointerException if the collection is null
-     * @exception ClassCastException   if an object is incompatible with this list
      */
     public boolean removeAll(Collection<?> c) {
         if (c == null) {
@@ -665,7 +659,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * @return whether the list changed as a result of the operation
      * 
      * @exception NullPointerException if the collection is null
-     * @exception ClassCastException   if an object is incompatible with this list
      */
     public boolean retainAll(Collection<?> c) {
         if (c == null) {
@@ -791,70 +784,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
     }
 
     /**
-     * Retrieves and removes the head of this list.
-     * 
-     * @return the element previously at the head of this list.
-     * 
-     * @exception NoSuchElementException if list is empty
-     */
-    public E remove() {
-        return removeFirst();
-    }
-
-    /**
-     * Retrieves and removes the first element of this list.
-     * 
-     * @return the element previously at the front
-     * 
-     * @exception NoSuchElementException if list is empty
-     */
-    public E removeFirst() {
-        if (isEmpty()) {
-            throw new NoSuchElementException("This list is empty.");
-        }
-        return remove(0);
-    }
-
-    /**
-     * Removes the first occurrence of the specified element from this list.
-     * 
-     * @param o the element to be removed
-     * @return whether the element was present in the list
-     */
-    public boolean removeFirstOccurrence(Object o) {
-        return remove(o);
-    }
-
-    /**
-     * Removes the last occurrence of the specified element from this list.
-     * 
-     * @param o the element to be removed
-     * @return whether the element was present in the list
-     */
-    public boolean removeLastOccurrence(Object o) {
-        int i = lastIndexOf(o);
-        boolean ret = i != -1;
-        if (ret) {
-            remove(i);
-        }
-        return ret;
-    }
-
-    /**
-     * Retrieves and removes the last element of this list.
-     * 
-     * @return the element previously at the back
-     * 
-     * @exception NoSuchElementException if list is empty
-     */
-    public E removeLast() {
-        if (isEmpty()) {
-            throw new NoSuchElementException("This list is empty.");
-        }
-        return remove(size() - 1);
-    }
-
-    /**
      * Returns an iterator over the elements in this list in reverse sequential
      * order.
      * 
@@ -896,16 +825,34 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * 
      * @param e the element to be added to the list
      * @return true
+     * 
+     * @exception NullPointerException if element is null
      */
     public boolean offer(E e) {
         return offerLast(e);
     }
 
+    /**
+     * Inserts the specified element at the front of this list.
+     * 
+     * @param e the element to be added to the list
+     * @return true
+     * 
+     * @exception NullPointerException if element is null
+     */
     public boolean offerFirst(E e) {
         addFirst(e);
         return true;
     }
 
+    /**
+     * Inserts the specified element at the end of this list.
+     * 
+     * @param e
+     * @return true
+     * 
+     * @exception NullPointerException if element is null
+     */
     public boolean offerLast(E e) {
         addLast(e);
         return true;
@@ -987,6 +934,8 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * Pops an element from the stack represented by this list.
      * 
      * @return the element that was popped
+     * 
+     * @exception NoSuchElementException if list is empty
      */
     public E pop() {
         return removeFirst();
@@ -996,15 +945,87 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * Pushes an element onto the stack represented by this list.
      * 
      * @param e the element to be added
+     * 
+     * @exception NullPointerException if element is null
      */
     public void push(E e) {
         addFirst(e);
+    }
+
+    /**
+     * Retrieves and removes the head of this list.
+     * 
+     * @return the element previously at the head of this list.
+     * 
+     * @exception NoSuchElementException if list is empty
+     */
+    public E remove() {
+        return removeFirst();
+    }
+
+    /**
+     * Retrieves and removes the first element of this list.
+     * 
+     * @return the element previously at the front
+     * 
+     * @exception NoSuchElementException if list is empty
+     */
+    public E removeFirst() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("This list is empty.");
+        }
+        return remove(0);
+    }
+
+    /**
+     * Removes the first occurrence of the specified element from this list.
+     * 
+     * @param o the element to be removed
+     * @return whether the element was present in the list
+     */
+    public boolean removeFirstOccurrence(Object o) {
+        return remove(o);
+    }
+
+    /**
+     * Removes the last occurrence of the specified element from this list.
+     * 
+     * @param o the element to be removed
+     * @return whether the element was present in the list
+     */
+    public boolean removeLastOccurrence(Object o) {
+        int i = lastIndexOf(o);
+        boolean ret = i != -1;
+        if (ret) {
+            remove(i);
+        }
+        return ret;
+    }
+
+    /**
+     * Retrieves and removes the last element of this list.
+     * 
+     * @return the element previously at the back
+     * 
+     * @exception NoSuchElementException if list is empty
+     */
+    public E removeLast() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("This list is empty.");
+        }
+        return remove(size() - 1);
     }
 
     /*
      * The following functions Override functions from the Object class.
      */
 
+    /**
+     * Indicates whether some other object is "equal to" this one.
+     * 
+     * @param o the object to compare
+     * @return true if equal
+     */
     public boolean equals(Object o) {
         if (o instanceof LinkedList) {
             LinkedList<?> lhs = (LinkedList<?>) o;
@@ -1021,6 +1042,11 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         return false;
     }
 
+    /**
+     * Returns a string representation of the object.
+     * 
+     * @return string representation
+     */
     public String toString() {
         StringBuilder sb = new StringBuilder();
         Iterator<E> it = iterator();
