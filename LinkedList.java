@@ -1,10 +1,7 @@
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Spliterator;
-import java.util.function.UnaryOperator;
 import java.util.NoSuchElementException;
 
 public class LinkedList<E> implements List<E> {
@@ -21,28 +18,245 @@ public class LinkedList<E> implements List<E> {
             this.data = data;
         }
 
+        /**
+         * Returns the element stored in this node.
+         * 
+         * @return the element
+         */
         public E getData() {
             return data;
         }
 
+        /**
+         * Returns the LinkedListNode this node leads forward to.
+         * 
+         * @return the next node
+         */
         public LinkedListNode getNext() {
             return next;
         }
 
+        /**
+         * Returns the LinkedListNode this node leads backward to.
+         * 
+         * @return the previous node
+         */
         public LinkedListNode getPrev() {
             return prev;
         }
 
+        /**
+         * Replaces the element stored in this LinkedListNode with the specified
+         * element.
+         * 
+         * @param data the element to store
+         */
         public void setData(E data) {
             this.data = data;
         }
 
+        /**
+         * Replaces the LinkedListNode this node leads forward to with the specified
+         * node.
+         * 
+         * @param next the node to store as the next node
+         */
         public void setNext(LinkedListNode next) {
             this.next = next;
         }
 
+        /**
+         * Replaces the LinkedListNode this node leads backward to with the specified
+         * node.
+         * 
+         * @param prev the node to store as the previous node
+         */
         public void setPrev(LinkedListNode prev) {
             this.prev = prev;
+        }
+    }
+
+    private class LinkedListIterator implements ListIterator<E> {
+        LinkedListNode prev;
+        LinkedListNode to_remove;
+        int index;
+
+        public LinkedListIterator(int index) {
+            LinkedListNode it = null;
+
+            if (index == 0) {
+                prev = head;
+                to_remove = null;
+            }
+
+            else {
+
+                if (index <= size() / 2) {
+                    int i = 0;
+                    it = head;
+                    while (i < index) {
+                        it = it.getNext();
+                        i++;
+                    }
+                } else {
+                    int i = size();
+                    it = foot;
+                    while (i >= index) {
+                        it = it.getPrev();
+                        i--;
+                    }
+                }
+                prev = it;
+                to_remove = it;
+            }
+            this.index = index;
+        }
+
+        /**
+         * Inserts the specified element into the list.
+         * 
+         * @param e the element to be added
+         */
+        public void add(E e) {
+            LinkedListNode add = new LinkedListNode(e);
+
+            prev.getNext().setPrev(add);
+            add.setNext(prev.getNext());
+            prev.setNext(add);
+            add.setPrev(prev);
+            to_remove = null;
+
+            index++;
+            size++;
+        }
+
+        /**
+         * Returns true if this list iterator has more elements when traversing the list
+         * in the forward direction.
+         * 
+         * @return whether the list iterator has a next element
+         */
+        public boolean hasNext() {
+            return nextIndex() < size();
+        }
+
+        /**
+         * Returns true if this list iterator has more elements when traversing the list
+         * in the reverse direction.
+         * 
+         * @return whether the list iterator has a previous element
+         */
+        public boolean hasPrevious() {
+            return previousIndex() >= 0;
+        }
+
+        /**
+         * Returns the next element in the list and advances the cursor position.
+         * 
+         * @return the next element in the list
+         * 
+         * @exception NoSuchElementException if the iteration has no next element
+         */
+        public E next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException("There is no next element.");
+            }
+            prev = prev.getNext();
+            index += 1;
+
+            to_remove = prev;
+            return prev.getData();
+        }
+
+        /**
+         * Returns the index of the element that would be returned by a call to next().
+         * 
+         * @return the index of the element that would be returned by next(), or size()
+         *         if three is no next element.
+         */
+        public int nextIndex() {
+            return index;
+        }
+
+        /**
+         * Returns the previous element in the list and moves the cursor position
+         * backwards.
+         * 
+         * @return the previous element in the list.
+         * 
+         * @exception NoSuchElementException if there is no previous element.
+         */
+        public E previous() {
+            if (!hasPrevious()) {
+                throw new NoSuchElementException("There is no previous element.");
+            }
+            to_remove = prev;
+            E ret = prev.getData();
+
+            prev = prev.getPrev();
+            index -= 1;
+
+            return ret;
+        }
+
+        /**
+         * Returns the index of the element that would be returned by a subsequent call
+         * to previous().
+         * 
+         * @return the index of the element that would be returned by prev(), or -1 if
+         *         there is no previous element.
+         */
+        public int previousIndex() {
+            return index - 1;
+        }
+
+        /**
+         * Removes from the list the last element that was returned by next() or
+         * previous()
+         * 
+         * @exception IllegalStateException if neither next nor previous have been
+         *                                  called, or remove or add have been called
+         *                                  after the last call to next or previous
+         * 
+         */
+        public void remove() {
+            if (to_remove == null) {
+                throw new IllegalStateException(
+                        "remove() may only be called once per call to next() or prev(), and only if add() has not been called after the last call to next or previous");
+            }
+
+            if (prev == to_remove) {
+                prev = to_remove.getPrev();
+            }
+
+            to_remove.getPrev().setNext(to_remove.getNext());
+            to_remove.getNext().setPrev(to_remove.getPrev());
+            to_remove.setPrev(null);
+            to_remove.setNext(null);
+            to_remove = null;
+            index--;
+
+            size--;
+        }
+
+        /**
+         * Replaces the last element returned by next() or previous() with the specified
+         * element.
+         * 
+         * @param e the element to be stored
+         * 
+         * @exception IllegalStateException if neither next nor previous have been
+         *                                  called, or remove or add have been called
+         *                                  after the last call to next or previous
+         * 
+         */
+        public void set(E e) {
+            if (to_remove == null) {
+                throw new IllegalStateException(
+                        "remove() may only be called once per call to next() or prev(), and only if add() has not been called after the last call to next or previous");
+            }
+
+            to_remove.setData(e);
         }
     }
 
@@ -169,6 +383,7 @@ public class LinkedList<E> implements List<E> {
      * @return true if element is present, else false
      * 
      * @exception NullPointerException if element is null
+     * @exception ClassCastException   if the object is incompatible with this list
      */
     public boolean contains(Object o) {
         if (o == null) {
@@ -186,6 +401,7 @@ public class LinkedList<E> implements List<E> {
      * 
      * @exception NullPointerException if element is null or if the collection is
      *                                 null
+     * @exception ClassCastException   if the object is incompatible with this list
      */
     public boolean containsAll(Collection<?> c) {
         if (c == null) {
@@ -201,7 +417,7 @@ public class LinkedList<E> implements List<E> {
         return true;
     }
 
-    // TODO
+    // @exception ClassCastException if the object is incompatible with this list
     public boolean equals(Object o) {
         return false;
     }
@@ -220,32 +436,7 @@ public class LinkedList<E> implements List<E> {
             throw new IndexOutOfBoundsException("Index may not be " + index + " on a LinkedList of size " + size());
         }
 
-        return getNode(index).getData();
-    }
-
-    // TODO
-    private LinkedListNode getParent(int index) {
-        LinkedListNode it = null;
-        if (index <= size() / 2) {
-            int i = 0;
-            it = head;
-            while (i < index) {
-                it = it.getNext();
-                i++;
-            }
-        } else {
-            int i = size();
-            it = foot;
-            while (i >= index) {
-                it = it.getPrev();
-                i--;
-            }
-        }
-        return it;
-    }
-
-    private LinkedListNode getNode(int index) {
-        return getParent(index).getNext();
+        return listIterator(index).next();
     }
 
     /**
@@ -255,6 +446,9 @@ public class LinkedList<E> implements List<E> {
      * @param o the element that is to be tested
      * @return index of the first occurrence of the specified element if it exists,
      *         else -1
+     * 
+     * @exception NullPointerException if element is null
+     * @exception ClassCastException   if the object is incompatible with this list
      */
     public int indexOf(Object o) {
         if (o == null) {
@@ -281,159 +475,106 @@ public class LinkedList<E> implements List<E> {
         return size() == 0;
     }
 
-    // TODO
+    /**
+     * Returns an iterator over the elements in this list in proper sequence.
+     * 
+     * @return the iterator
+     */
     public Iterator<E> iterator() {
         return listIterator();
     }
 
-    // TODO
+    /**
+     * Returns the index of the last occurrence of the specified element in this
+     * list, or -1 if this list does not contain the element.
+     * 
+     * @param o the element that is to be tested
+     * @return index of the first occurrence of the specified element if it exists,
+     *         else -1
+     * 
+     * @exception NullPointerException if element is null
+     * @exception ClassCastException   if the object is incompatible with this list
+     */
     public int lastIndexOf(Object o) {
-        int lastIndex = -1;
-        if (o != null) {
-            Iterator<E> it = iterator();
-            int i = 0;
-            while (it.hasNext()) {
-                if (it.next().equals(o)) {
-                    lastIndex = i;
-                } else {
-                    i++;
-                }
-            }
+        if (o == null) {
+            throw new NullPointerException("LinkedList may not contain null elements");
         }
-        return lastIndex;
+
+        ListIterator<E> it = listIterator(size());
+        int i = 0;
+        while (it.hasPrevious()) {
+            if (it.previous().equals(o)) {
+                return i;
+            }
+            i--;
+        }
+        return -1;
     }
 
-    private class LinkedListIterator implements ListIterator<E> {
-        LinkedListNode prev;
-        LinkedListNode to_remove;
-        int index;
-
-        public LinkedListIterator() {
-            this(0);
-        }
-
-        public LinkedListIterator(int index) {
-            LinkedListNode it = null;
-
-            if (index == 0) {
-                prev = head;
-                to_remove = null;
-            }
-
-            else {
-
-                if (index <= size() / 2) {
-                    int i = 0;
-                    it = head;
-                    while (i < index) {
-                        it = it.getNext();
-                        i++;
-                    }
-                } else {
-                    int i = size();
-                    it = foot;
-                    while (i >= index) {
-                        it = it.getPrev();
-                        i--;
-                    }
-                }
-                prev = it;
-                to_remove = it;
-            }
-            this.index = index;
-        }
-
-        public void add(E e) {
-            LinkedListNode add = new LinkedListNode(e);
-
-            prev.getNext().setPrev(add);
-            add.setNext(prev.getNext());
-            prev.setNext(add);
-            add.setPrev(prev);
-            to_remove = null;
-
-            index++;
-            size++;
-        }
-
-        public boolean hasNext() {
-            return nextIndex() < size();
-        }
-
-        public boolean hasPrevious() {
-            return previousIndex() >= 0;
-        }
-
-        public E next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException("There is no next element.");
-            }
-            prev = prev.getNext();
-            index += 1;
-
-            to_remove = prev;
-            return prev.getData();
-        }
-
-        public int nextIndex() {
-            return index;
-        }
-
-        public E previous() {
-            if (!hasPrevious()) {
-                throw new NoSuchElementException("There is no previous element.");
-            }
-            to_remove = prev;
-            E ret = prev.getData();
-
-            prev = prev.getPrev();
-            index -= 1;
-
-            return ret;
-        }
-
-        public int previousIndex() {
-            return index - 1;
-        }
-
-        public void remove() {
-            if (prev == to_remove) {
-                prev = to_remove.getPrev();
-            }
-
-            to_remove.getPrev().setNext(to_remove.getNext());
-            to_remove.getNext().setPrev(to_remove.getPrev());
-            to_remove.setPrev(null);
-            to_remove.setNext(null);
-            to_remove = null;
-            index--;
-
-            size--;
-        }
-
-        public void set(E e) {
-            to_remove.setData(e);
-        }
-    }
-
+    /**
+     * Returns a list iterator over the elements in this list
+     * 
+     * @return a list iterator
+     */
     public ListIterator<E> listIterator() {
         return listIterator(0);
     }
 
-    // TODO
+    /**
+     * Returns a list iterator over the elements in this list,
+     * starting at the specified position in the list. The specified index indicates
+     * the first element that would be returned by an initial call to next.
+     * 
+     * @param index the index at which to start iterating
+     * @return a list iterator that starts at the specified position
+     * 
+     * @exception IndexOutOfBoundsException if index is out of range (index < 0 ||
+     *                                      index >= size())
+     */
     public ListIterator<E> listIterator(int index) {
+        if (index < 0 || index >= size()) {
+            throw new IndexOutOfBoundsException("Index may not be " + index + " on a LinkedList of size " + size());
+        }
+
         return new LinkedListIterator(index);
 
     }
 
+    /**
+     * Removes the element at the specified position in this list.
+     * 
+     * @index the index of the element to be removed
+     * @return the element previously at that position
+     * 
+     * @exception IndexOutOfBounds if index is out of range (index < 0 ||
+     *                             index >= size())
+     */
     public E remove(int index) {
+        if (index < 0 || index >= size()) {
+            throw new IndexOutOfBoundsException("Index may not be " + index + " on a LinkedList of size " + size());
+        }
+
         ListIterator<E> it = listIterator(index);
         E ret = it.next();
         it.remove();
         return ret;
     }
 
+    /**
+     * Removes the first occurrence of the specified element from this list, if it
+     * is present.
+     * 
+     * @param o the object to remove
+     * @return whether or not an instance of the object was present in the list
+     * 
+     * @exception NullPointerException if object is null
+     * @exception ClassCastException   if the object is incompatible with this list
+     */
     public boolean remove(Object o) {
+        if (o == null) {
+            throw new NullPointerException("LinkedList may not contain null elements");
+        }
+
         ListIterator<E> it = listIterator();
         while (it.hasNext()) {
             if (it.next().equals(o)) {
@@ -444,7 +585,21 @@ public class LinkedList<E> implements List<E> {
         return false;
     }
 
+    /**
+     * Removes from this list all of its elements that are contained in the
+     * specified collection.
+     * 
+     * @param c collection containing elements to be removed from this list
+     * @return whether the list changed as a result of the operation
+     * 
+     * @exception NullPointerException if the collection is null
+     * @exception ClassCastException   if an object is incompatible with this list
+     */
     public boolean removeAll(Collection<?> c) {
+        if (c == null) {
+            throw new NullPointerException("Collection may not be null");
+        }
+
         boolean ret = false;
         ListIterator<E> it = listIterator();
         while (it.hasNext()) {
@@ -456,7 +611,21 @@ public class LinkedList<E> implements List<E> {
         return ret;
     }
 
+    /**
+     * Retains only the elements in this list that are contained in the specified
+     * collection.
+     * 
+     * @param c collection containing elements to be retained in this list
+     * @return whether the list changed as a result of the operation
+     * 
+     * @exception NullPointerException if the collection is null
+     * @exception ClassCastException   if an object is incompatible with this list
+     */
     public boolean retainAll(Collection<?> c) {
+        if (c == null) {
+            throw new NullPointerException("Collection may not be null");
+        }
+
         boolean ret = false;
         ListIterator<E> it = listIterator();
         while (it.hasNext()) {
@@ -468,6 +637,18 @@ public class LinkedList<E> implements List<E> {
         return ret;
     }
 
+    /**
+     * Replaces the element at the specified position in this list with the
+     * specified element.
+     * 
+     * @param index   index of the element to replace
+     * @param element element to be stored at specific position
+     * @return the element that was replaced
+     * 
+     * @exception IndexOutOfBoundsException if index is out of range (index < 0 ||
+     *                                      index >= size())
+     * @exception NullPointerException      if element is null
+     */
     public E set(int index, E element) {
         ListIterator<E> it = listIterator(index);
         E ret = it.next();
@@ -475,14 +656,26 @@ public class LinkedList<E> implements List<E> {
         return ret;
     }
 
+    /**
+     * Returns the number of elements in this list.
+     * 
+     * @return the number of elements in this list.
+     */
     public int size() {
         return size;
     }
 
+    // TODO
     public List<E> subList(int fromIndex, int toIndex) {
         return null;
     }
 
+    /**
+     * Returns an array containing all of the elements in this list in proper
+     * sequence (from first to last element).
+     * 
+     * @return an array containing all of the elements in this list
+     */
     public Object[] toArray() {
         Object[] ret = new Object[size()];
 
@@ -494,6 +687,17 @@ public class LinkedList<E> implements List<E> {
         return ret;
     }
 
+    /**
+     * Returns an array containing all of the elements in this list in proper
+     * sequence. The runtime type of the returned array is that of the specified
+     * array.
+     * 
+     * @param a the array which should be used
+     * @return an array containing all of the elements in this list
+     * 
+     * @exception NullPointerException if array is null.
+     * @exception ArrayStoreException  if T is not a supertype of E
+     */
     public <T> T[] toArray(T[] a) {
         T[] ret = a;
         if (a.length < size()) {
