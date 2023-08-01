@@ -1,3 +1,4 @@
+
 import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
@@ -5,310 +6,26 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
+/**
+ * An ordered collection implemented as a Doubly-Linked List.
+ * 
+ * Most operations run in O(n) time, with the exception of addFirst(),
+ * addLast(), removeFirst(), and removeLast(), which run in O(1) time.
+ * 
+ * Documentation is largely taken from the documentation for the
+ * List<E> and Deque<E> interfaces.
+ * https://docs.oracle.com/javase/8/docs/api/java/util/List.html
+ * https://docs.oracle.com/javase/8/docs/api/java/util/Deque.html
+ */
 public class LinkedList<E> implements List<E>, Deque<E> {
-    private class LinkedListNode {
-        private E data;
-        private LinkedListNode prev;
-        private LinkedListNode next;
-
-        public LinkedListNode() {
-            this(null);
-        }
-
-        public LinkedListNode(E data) {
-            this.data = data;
-        }
-
-        /**
-         * Returns the element stored in this node.
-         * 
-         * @return the element
-         */
-        public E getData() {
-            return data;
-        }
-
-        /**
-         * Returns the LinkedListNode this node leads forward to.
-         * 
-         * @return the next node
-         */
-        public LinkedListNode getNext() {
-            return next;
-        }
-
-        /**
-         * Returns the LinkedListNode this node leads backward to.
-         * 
-         * @return the previous node
-         */
-        public LinkedListNode getPrev() {
-            return prev;
-        }
-
-        /**
-         * Replaces the element stored in this LinkedListNode with the specified
-         * element.
-         * 
-         * @param data the element to store
-         */
-        public void setData(E data) {
-            this.data = data;
-        }
-
-        /**
-         * Replaces the LinkedListNode this node leads forward to with the specified
-         * node.
-         * 
-         * @param next the node to store as the next node
-         */
-        public void setNext(LinkedListNode next) {
-            this.next = next;
-        }
-
-        /**
-         * Replaces the LinkedListNode this node leads backward to with the specified
-         * node.
-         * 
-         * @param prev the node to store as the previous node
-         */
-        public void setPrev(LinkedListNode prev) {
-            this.prev = prev;
-        }
-    }
-
-    private class LinkedListIterator implements ListIterator<E> {
-        LinkedListNode prev;
-        LinkedListNode to_remove;
-        int index;
-
-        public LinkedListIterator(int index) {
-            LinkedListNode it = null;
-
-            if (index == 0) {
-                prev = head;
-                to_remove = null;
-            }
-
-            else {
-
-                if (index <= size() / 2) {
-                    int i = 0;
-                    it = head;
-                    while (i < index) {
-                        it = it.getNext();
-                        i++;
-                    }
-                } else {
-                    int i = size();
-                    it = foot;
-                    while (i >= index) {
-                        it = it.getPrev();
-                        i--;
-                    }
-                }
-                prev = it;
-                to_remove = it;
-            }
-            this.index = index;
-        }
-
-        /**
-         * Inserts the specified element into the list.
-         * 
-         * @param e the element to be added
-         */
-        public void add(E e) {
-            LinkedListNode add = new LinkedListNode(e);
-
-            prev.getNext().setPrev(add);
-            add.setNext(prev.getNext());
-            prev.setNext(add);
-            add.setPrev(prev);
-            to_remove = null;
-
-            index++;
-            size++;
-        }
-
-        /**
-         * Returns true if this list iterator has more elements when traversing the list
-         * in the forward direction.
-         * 
-         * @return whether the list iterator has a next element
-         */
-        public boolean hasNext() {
-            return nextIndex() < size();
-        }
-
-        /**
-         * Returns true if this list iterator has more elements when traversing the list
-         * in the reverse direction.
-         * 
-         * @return whether the list iterator has a previous element
-         */
-        public boolean hasPrevious() {
-            return previousIndex() >= 0;
-        }
-
-        /**
-         * Returns the next element in the list and advances the cursor position.
-         * 
-         * @return the next element in the list
-         * 
-         * @exception NoSuchElementException if the iteration has no next element
-         */
-        public E next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException("There is no next element.");
-            }
-            prev = prev.getNext();
-            index += 1;
-
-            to_remove = prev;
-            return prev.getData();
-        }
-
-        /**
-         * Returns the index of the element that would be returned by a call to next().
-         * 
-         * @return the index of the element that would be returned by next(), or size()
-         *         if three is no next element.
-         */
-        public int nextIndex() {
-            return index;
-        }
-
-        /**
-         * Returns the previous element in the list and moves the cursor position
-         * backwards.
-         * 
-         * @return the previous element in the list.
-         * 
-         * @exception NoSuchElementException if there is no previous element.
-         */
-        public E previous() {
-            if (!hasPrevious()) {
-                throw new NoSuchElementException("There is no previous element.");
-            }
-            to_remove = prev;
-            E ret = prev.getData();
-
-            prev = prev.getPrev();
-            index -= 1;
-
-            return ret;
-        }
-
-        /**
-         * Returns the index of the element that would be returned by a subsequent call
-         * to previous().
-         * 
-         * @return the index of the element that would be returned by prev(), or -1 if
-         *         there is no previous element.
-         */
-        public int previousIndex() {
-            return index - 1;
-        }
-
-        /**
-         * Removes from the list the last element that was returned by next() or
-         * previous()
-         * 
-         * @exception IllegalStateException if neither next nor previous have been
-         *                                  called, or remove or add have been called
-         *                                  after the last call to next or previous
-         * 
-         */
-        public void remove() {
-            if (to_remove == null) {
-                throw new IllegalStateException(
-                        "remove() may only be called once per call to next() or prev(), and only if add() has not been called after the last call to next or previous");
-            }
-
-            if (prev == to_remove) {
-                prev = to_remove.getPrev();
-            }
-
-            to_remove.getPrev().setNext(to_remove.getNext());
-            to_remove.getNext().setPrev(to_remove.getPrev());
-            to_remove.setPrev(null);
-            to_remove.setNext(null);
-            to_remove = null;
-            index--;
-
-            size--;
-        }
-
-        /**
-         * Replaces the last element returned by next() or previous() with the specified
-         * element.
-         * 
-         * @param e the element to be stored
-         * 
-         * @exception IllegalStateException if neither next nor previous have been
-         *                                  called, or remove or add have been called
-         *                                  after the last call to next or previous
-         * 
-         */
-        public void set(E e) {
-            if (to_remove == null) {
-                throw new IllegalStateException(
-                        "remove() may only be called once per call to next() or prev(), and only if add() has not been called after the last call to next or previous");
-            }
-
-            to_remove.setData(e);
-        }
-    }
-
-    private class LinkedListDescendingIterator implements Iterator<E> {
-        LinkedListIterator it;
-
-        public LinkedListDescendingIterator() {
-            it = new LinkedListIterator(size());
-        }
-
-        /**
-         * Returns true if this list iterator has more elements when traversing the
-         * list.
-         * 
-         * @return whether the list iterator has a next element
-         */
-        public boolean hasNext() {
-            return it.hasPrevious();
-        }
-
-        /**
-         * Returns the next element in the list and advances the cursor position.
-         * 
-         * @return the next element in the list
-         * 
-         * @exception NoSuchElementException if the iteration has no next element
-         */
-        public E next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException("There is no next element.");
-            }
-            return it.previous();
-        }
-
-        /**
-         * Removes from the list the last element that was returned by next()
-         * 
-         * @exception IllegalStateException if neither next nor previous have been
-         *                                  called, or remove or add have been called
-         *                                  after the last call to next or previous
-         * 
-         */
-        public void remove() {
-            it.remove();
-        }
-    }
 
     LinkedListNode head;
     LinkedListNode foot;
     int size = 0;
 
+    /**
+     * Construct a new, empty Linked List
+     */
     public LinkedList() {
         head = new LinkedListNode();
         foot = new LinkedListNode();
@@ -317,6 +34,15 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         foot.setPrev(head);
     }
 
+    /**
+     * Construct a view of a Linked List starting from h and leading to f, with s
+     * representing the size. If this does not represent a well-formed Linked List
+     * then the behavior is undefined.
+     * 
+     * @param h the head of the new list
+     * @param f the foot of the new list
+     * @param s the size of the new list
+     */
     private LinkedList(LinkedListNode h, LinkedListNode f, int s) {
         head = h;
         foot = f;
@@ -549,7 +275,7 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         }
 
         ListIterator<E> it = listIterator(size());
-        int i = 0;
+        int i = size() - 1;
         while (it.hasPrevious()) {
             if (it.previous().equals(o)) {
                 return i;
@@ -585,7 +311,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         }
 
         return new LinkedListIterator(index);
-
     }
 
     /**
@@ -836,6 +561,8 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * Retrieves, but does not remove, the first element of this list.
      * 
      * @return the head of the list
+     * 
+     * @exception NoSuchElementException if list is empty
      */
     public E element() {
         return getFirst();
@@ -845,8 +572,13 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * Retrieves, but does not remove, the first element of this list.
      * 
      * @return the head of the list
+     * 
+     * @exception NoSuchElementException if list is empty
      */
     public E getFirst() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("LinkedList is empty");
+        }
         return get(0);
     }
 
@@ -854,8 +586,13 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * Retrieves, but does not remove, the last element of this list.
      * 
      * @return the last element of the list
+     * 
+     * @exception NoSuchElementException if list is empty
      */
     public E getLast() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("LinkedList is empty");
+        }
         return get(size() - 1);
     }
 
@@ -930,7 +667,7 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         if (isEmpty()) {
             return null;
         }
-        return getFirst();
+        return getLast();
     }
 
     /**
@@ -1100,6 +837,335 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         sb.append("]");
 
         return sb.toString();
+    }
+
+    /**
+     * A doubly-linked node class used for the internal storage of the list.
+     */
+    private class LinkedListNode {
+        private E data;
+        private LinkedListNode prev;
+        private LinkedListNode next;
+
+        /**
+         * Constructs a new, unlinked node, with no internal data.
+         */
+        public LinkedListNode() {
+            this(null);
+        }
+
+        /**
+         * Constructs a new, unlinked node, with some internal data.
+         * 
+         * @param data the internal data to store
+         */
+        public LinkedListNode(E data) {
+            this.data = data;
+        }
+
+        /**
+         * Returns the element stored in this node.
+         * 
+         * @return the element
+         */
+        public E getData() {
+            return data;
+        }
+
+        /**
+         * Returns the LinkedListNode this node leads forward to.
+         * 
+         * @return the next node
+         */
+        public LinkedListNode getNext() {
+            return next;
+        }
+
+        /**
+         * Returns the LinkedListNode this node leads backward to.
+         * 
+         * @return the previous node
+         */
+        public LinkedListNode getPrev() {
+            return prev;
+        }
+
+        /**
+         * Replaces the element stored in this LinkedListNode with the specified
+         * element.
+         * 
+         * @param data the element to store
+         */
+        public void setData(E data) {
+            this.data = data;
+        }
+
+        /**
+         * Replaces the LinkedListNode this node leads forward to with the specified
+         * node.
+         * 
+         * @param next the node to store as the next node
+         */
+        public void setNext(LinkedListNode next) {
+            this.next = next;
+        }
+
+        /**
+         * Replaces the LinkedListNode this node leads backward to with the specified
+         * node.
+         * 
+         * @param prev the node to store as the previous node
+         */
+        public void setPrev(LinkedListNode prev) {
+            this.prev = prev;
+        }
+    }
+
+    /**
+     * A class used to iterate through the list
+     */
+    private class LinkedListIterator implements ListIterator<E> {
+        LinkedListNode prev;
+        LinkedListNode to_remove;
+        int index;
+
+        /**
+         * Constructs a new LinkedListIterator from the position provided as a
+         * parameter.
+         * 
+         * @param index the position to start from
+         * 
+         * @exception IndexOutOfBoundsException if index is out of range
+         */
+        public LinkedListIterator(int index) {
+            if (index < 0 || index > size()) {
+                throw new IndexOutOfBoundsException("Iterator cannot start from " + index);
+            }
+
+            LinkedListNode it = null;
+
+            if (index == 0) {
+                prev = head;
+                to_remove = null;
+            }
+
+            else {
+
+                if (index <= size() / 2) {
+                    int i = 0;
+                    it = head;
+                    while (i < index) {
+                        it = it.getNext();
+                        i++;
+                    }
+                } else {
+                    int i = size();
+                    it = foot;
+                    while (i >= index) {
+                        it = it.getPrev();
+                        i--;
+                    }
+                }
+                prev = it;
+                to_remove = it;
+            }
+            this.index = index;
+        }
+
+        /**
+         * Inserts the specified element into the list.
+         * 
+         * @param e the element to be added
+         */
+        public void add(E e) {
+            LinkedListNode add = new LinkedListNode(e);
+
+            prev.getNext().setPrev(add);
+            add.setNext(prev.getNext());
+            prev.setNext(add);
+            add.setPrev(prev);
+            to_remove = null;
+
+            index++;
+            size++;
+        }
+
+        /**
+         * Returns true if this list iterator has more elements when traversing the list
+         * in the forward direction.
+         * 
+         * @return whether the list iterator has a next element
+         */
+        public boolean hasNext() {
+            return nextIndex() < size();
+        }
+
+        /**
+         * Returns true if this list iterator has more elements when traversing the list
+         * in the reverse direction.
+         * 
+         * @return whether the list iterator has a previous element
+         */
+        public boolean hasPrevious() {
+            return previousIndex() >= 0;
+        }
+
+        /**
+         * Returns the next element in the list and advances the cursor position.
+         * 
+         * @return the next element in the list
+         * 
+         * @exception NoSuchElementException if the iteration has no next element
+         */
+        public E next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException("There is no next element.");
+            }
+            prev = prev.getNext();
+            index += 1;
+
+            to_remove = prev;
+            return prev.getData();
+        }
+
+        /**
+         * Returns the index of the element that would be returned by a call to next().
+         * 
+         * @return the index of the element that would be returned by next(), or size()
+         *         if three is no next element.
+         */
+        public int nextIndex() {
+            return index;
+        }
+
+        /**
+         * Returns the previous element in the list and moves the cursor position
+         * backwards.
+         * 
+         * @return the previous element in the list.
+         * 
+         * @exception NoSuchElementException if there is no previous element.
+         */
+        public E previous() {
+            if (!hasPrevious()) {
+                throw new NoSuchElementException("There is no previous element.");
+            }
+            to_remove = prev;
+            E ret = prev.getData();
+
+            prev = prev.getPrev();
+            index -= 1;
+
+            return ret;
+        }
+
+        /**
+         * Returns the index of the element that would be returned by a subsequent call
+         * to previous().
+         * 
+         * @return the index of the element that would be returned by prev(), or -1 if
+         *         there is no previous element.
+         */
+        public int previousIndex() {
+            return index - 1;
+        }
+
+        /**
+         * Removes from the list the last element that was returned by next() or
+         * previous()
+         * 
+         * @exception IllegalStateException if neither next nor previous have been
+         *                                  called, or remove or add have been called
+         *                                  after the last call to next or previous
+         * 
+         */
+        public void remove() {
+            if (to_remove == null) {
+                throw new IllegalStateException(
+                        "remove() may only be called once per call to next() or prev(), and only if add() has not been called after the last call to next or previous");
+            }
+
+            if (prev == to_remove) {
+                prev = to_remove.getPrev();
+            }
+
+            to_remove.getPrev().setNext(to_remove.getNext());
+            to_remove.getNext().setPrev(to_remove.getPrev());
+            to_remove.setPrev(null);
+            to_remove.setNext(null);
+            to_remove = null;
+            index--;
+
+            size--;
+        }
+
+        /**
+         * Replaces the last element returned by next() or previous() with the specified
+         * element.
+         * 
+         * @param e the element to be stored
+         * 
+         * @exception IllegalStateException if neither next nor previous have been
+         *                                  called, or remove or add have been called
+         *                                  after the last call to next or previous
+         */
+        public void set(E e) {
+            if (to_remove == null) {
+                throw new IllegalStateException(
+                        "remove() may only be called once per call to next() or prev(), and only if add() has not been called after the last call to next or previous");
+            }
+
+            to_remove.setData(e);
+        }
+    }
+
+    /**
+     * A wrapper class for LinkedListIterator used to iterate backwards through the
+     * list
+     */
+    private class LinkedListDescendingIterator implements Iterator<E> {
+        LinkedListIterator it;
+
+        /** Construct a new iterator, starting from the back of the list */
+        public LinkedListDescendingIterator() {
+            it = new LinkedListIterator(size());
+        }
+
+        /**
+         * Returns true if this list iterator has more elements when traversing the
+         * list.
+         * 
+         * @return whether the list iterator has a next element
+         */
+        public boolean hasNext() {
+            return it.hasPrevious();
+        }
+
+        /**
+         * Returns the next element in the list and advances the cursor position.
+         * 
+         * @return the next element in the list
+         * 
+         * @exception NoSuchElementException if the iteration has no next element
+         */
+        public E next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException("There is no next element.");
+            }
+            return it.previous();
+        }
+
+        /**
+         * Removes from the list the last element that was returned by next()
+         * 
+         * @exception IllegalStateException if neither next nor previous have been
+         *                                  called, or remove or add have been called
+         *                                  after the last call to next or previous
+         * 
+         */
+        public void remove() {
+            it.remove();
+        }
     }
 
 }
