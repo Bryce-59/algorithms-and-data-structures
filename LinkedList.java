@@ -317,6 +317,12 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         foot.setPrev(head);
     }
 
+    private LinkedList(LinkedListNode h, LinkedListNode f, int s) {
+        head = h;
+        foot = f;
+        size = s;
+    }
+
     /*
      * 
      * The following functions are part of the List interface.
@@ -704,9 +710,42 @@ public class LinkedList<E> implements List<E>, Deque<E> {
         return size;
     }
 
-    // TODO
+    /**
+     * Returns a view of the portion of this list between the specified fromIndex,
+     * inclusive, and toIndex, exclusive.
+     * 
+     * The semantics of the list returned by this method become undefined if the
+     * backing list is structurally modified in any way other than
+     * via the returned list.
+     * 
+     * @param toIndex the index to start from (inclusive)
+     * @param toIndex the index to end at (exclusive)
+     * 
+     * @return the subList
+     * 
+     * @exception IndexOutofBoundsException if index is out of range (fromIndex < 0
+     *                                      || fromIndex > toIndex || toIndex >
+     *                                      size)
+     */
     public List<E> subList(int fromIndex, int toIndex) {
-        return null;
+        if (fromIndex < 0 || toIndex > size) {
+            throw new IndexOutOfBoundsException(
+                    fromIndex + " and " + toIndex + " are illegal indicides for a list of size " + size());
+        } else if (fromIndex > toIndex) {
+            throw new IndexOutOfBoundsException(
+                    "first argument " + fromIndex + " must be less or equal to second argument " + toIndex);
+        }
+
+        LinkedListNode h = head;
+        for (int i = 0; i < fromIndex; i++) {
+            h = h.getNext();
+        }
+        LinkedListNode f = h;
+        for (int i = fromIndex; i <= toIndex; i++) {
+            f = f.getNext();
+        }
+
+        return new LinkedList<E>(h, f, toIndex - fromIndex);
     }
 
     /**
