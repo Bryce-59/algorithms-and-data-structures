@@ -1,4 +1,6 @@
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
@@ -501,16 +503,21 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      * @exception NullPointerException if array is null.
      * @exception ArrayStoreException  if T is not a supertype of E
      */
+    @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
         T[] ret = a;
         if (a.length < size()) {
-            // ret = new T[size()];
+            ret = (T[]) Arrays.copyOf(a, size, a.getClass());
         }
 
         int i = 0;
         ListIterator<E> it = listIterator();
-        while (i < size() && it.hasNext()) {
-            // ret[i++] = (T) it.next();
+        try {
+            while (i < size() && it.hasNext()) {
+                ret[i++] = (T) it.next();
+            }
+        } catch (ClassCastException e) {
+            throw new ArrayStoreException("T is not a supertype of E");
         }
         if (a.length > size()) {
             ret[size()] = null;
