@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeSet;
@@ -15,13 +16,31 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     int size = 0;
     Comparator<? super K> comparator;
 
-    @Override
+    /**
+     * Returns the first key currently in this map.
+     * 
+     * @return the first key in the map
+     * 
+     * @exception NoSuchElementException if the map is empty
+     */
     public K firstKey() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("The map is empty.")
+        } 
         return firstEntry().getKey();
     }
 
-    @Override
+    /**
+     * Returns a Set view of the keys contained in this map.
+     * 
+     * @return the last key in the map.
+     * 
+     * @exception NoSuchElementException if the map is empty
+     */
     public K lastKey() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("The map is empty.")
+        }
         return lastEntry().getKey();
     }
 
@@ -98,17 +117,32 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         }
     }
 
-    @Override
+    /**
+     * Returns the number of key-value mappings in this map.
+     * 
+     * @return the size of the map
+     */
     public int size() {
         return size();
     }
 
-    @Override
+    /**
+     * Returns true if this map contains no key-value mappings.
+     * 
+     * @return whether the map is empty
+     */
     public boolean isEmpty() {
         return size() == 0;
     }
 
-    @Override
+    /**
+     * Returns true if this map contains a mapping for the specified key.
+     * 
+     * @param key the object to find
+     * @return true if the mapping contains the key.
+     * 
+     * @exception ClassCastException if key is of an inappopriate type.
+     */
     public boolean containsKey(Object key) {
         if ((root.getKey() == null && key == null) || root.getKey().equals(key)) {
             return true;
@@ -116,11 +150,27 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         return getParent(key).getChild(key) != null;
     }
 
-    @Override
+    /**
+     * Returns true if this map maps one or more keys to the specified value.
+     * 
+     * @param value the object to find
+     * @return true if the mapping contains the value
+     * 
+     * @exception ClassCastException if key is of an inappopriate type.
+     */
     public boolean containsValue(Object value) {
         return containsValueHelper(value, root);
     }
 
+    /**
+     * Recursive helper method for containsVale()
+     * 
+     * @param value   the object to find
+     * @param current the root of the current sub-tree to check
+     * @return true if value is found in the relevant subtree
+     * 
+     * @exception ClassCastException if key is of an inappopriate type.
+     */
     private boolean containsValueHelper(Object value, TreeMapEntry current) {
         boolean ret = false;
         if (current != null) {
@@ -137,47 +187,66 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         return ret;
     }
 
-    public boolean containsValueHelper(TreeMapEntry cur, V value) {
-        boolean ret = false;
-        if (cur != null) {
-            ret |= cur.getValue().equals(value);
-            if (ret) {
-                return true;
-            }
-            ret |= containsValueHelper(cur.getLeft(), value);
-            if (ret) {
-                return true;
-            }
-            ret |= containsValueHelper(cur.getLeft(), value);
-        }
-        return ret;
-    }
-
-    @Override
+    /**
+     * Returns the value to which the specified key is mapped, or null if this map
+     * contains no mapping for the key.
+     * 
+     * @param key the key to reference
+     * @return the value at the key, if it is exists
+     * 
+     * @exception ClassCastException if key is of an inappopriate type.
+     */
     public V get(Object key) {
-        if ((root.getKey() == null && key == null) || root.getKey().equals(key)) {
+        if (root.compareKey(key) == 0) {
             return root.getValue();
         }
         TreeMapEntry tmp = getParent(key);
         return tmp != null ? tmp.getChild(key).getValue() : null;
     }
 
+    /**
+     * Overloaded helper function which finds the parent entry for a given key
+     * 
+     * @param o the object to reference
+     * @return the entry which represents the parent entry
+     * 
+     * @exception ClassCastException if key is of an inappropriate type.
+     */
+    @SuppressWarnings("unchecked")
     private TreeMapEntry getParent(Object o) {
-        return getParent((K) o);
+        try {
+            return getParent((K) o);
+        } catch (ClassCastException e) {
+            throw new ClassCastException(o.toString() + "is not an appropriate key for this map.");
+        }
+
     }
 
+    /**
+     * Overloaded helper function which finds the parent entry for a given key
+     * 
+     * @param o the object to reference
+     * @return the entry which represents the parent entry
+     */
     private TreeMapEntry getParent(K key) {
         TreeMapEntry tmp_p = null;
         TreeMapEntry tmp = root;
 
-        while (tmp != null && !((tmp.getKey() == null && key == null) || tmp.getKey().equals(key))) {
+        while (tmp != null && (tmp.compareKey(key) != 0)) {
             tmp_p = tmp;
             tmp = tmp.compareKey(key) < 0 ? tmp.getLeft() : tmp.getRight();
         }
         return tmp_p;
     }
 
-    @Override
+    /**
+     * Associates the specified value with the specified key in this map.
+     * 
+     * @param key   the key at which to store the value
+     * @param value the value to be stored at the key
+     * 
+     * @return the value that was previously stored with key
+     */
     public V put(K key, V value) {
         V ret = null;
         if (size() == 0) {
@@ -197,10 +266,10 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             } else {
                 tmp_p.setRight(add);
             }
+            size++;
         }
 
         rebalance();
-
         return ret;
     }
 
@@ -208,7 +277,14 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     private void rebalance() {
     }
 
-    @Override
+    /**
+     * Removes the mapping for this key from this TreeMap if present.
+     * 
+     * @param key the key to remove from the map
+     * @return the value that was removed from the map
+     * 
+     * @exception ClassCastException if the key has an inappropriate type
+     */
     public V remove(Object key) {
         V ret = null;
         if (size() == 1) {
@@ -270,6 +346,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a key-value mapping associated with the least key greater than or
      * equal to the given key, or null if there is no such key.
+     * 
+     * @return the key-value mapping
      */
     public Map.Entry<K, V> ceilingEntry(K key) {
         return tailMap(key, true).firstEntry();
@@ -278,13 +356,27 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns the least key greater than or equal to the given key, or null if
      * there is no such key.
+     * 
+     * @return the key
      */
     public K ceilingKey(K key) {
         return ceilingEntry(key).getKey();
     }
 
     /**
+     * Returns the comparator used to order the keys in this map, or null if this
+     * map uses the natural ordering of its keys.
+     * 
+     * @return the comparator
+     */
+    public Comparator<? super K> comparator() {
+        return comparator;
+    }
+
+    /**
      * Returns a reverse order NavigableSet view of the keys contained in this map.
+     * 
+     * @return the descending set of keys
      */
     public NavigableSet<K> descendingKeySet() {
         return navigableKeySet().descendingSet();
@@ -292,6 +384,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
     /**
      * Returns a reverse order view of the mappings contained in this map.
+     * 
+     * @return the reverse order view
      */
     public NavigableMap<K, V> descendingMap() {
         return null; // TODO
@@ -300,15 +394,19 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a key-value mapping associated with the least key in this map, or
      * null if the map is empty.
+     * 
+     * @return the key-value mapping
      */
     public Map.Entry<K, V> firstEntry() {
         return size() == 1 ? root : firstParent().getLeft();
     }
 
-    /*
+    /**
      * Helper method to find the parent of the first entry
+     * 
+     * @return the parent of the key-value mapping
      */
-    public TreeMapEntry firstParent() {
+    private TreeMapEntry firstParent() {
         TreeMapEntry tmp_p = null;
         TreeMapEntry tmp = root;
         while (tmp.hasLeft()) {
@@ -321,6 +419,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a key-value mapping associated with the greatest key less than or
      * equal to the given key, or null if there is no such key.
+     * 
+     * @return the key-value mapping
      */
     public Map.Entry<K, V> floorEntry(K key) {
         return headMap(key, true).firstEntry();
@@ -329,6 +429,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns the greatest key less than or equal to the given key, or null if
      * there is no such key.
+     * 
+     * @return the key
      */
     public K floorKey(K key) {
         return floorEntry(key).getKey();
@@ -337,6 +439,10 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a view of the portion of this map whose keys are strictly less than
      * toKey.
+     * 
+     * @param toKey the key at which to end
+     * 
+     * @return the sub-view of the map
      */
     public SortedMap<K, V> headMap(K toKey) {
         return headMap(toKey, false);
@@ -345,6 +451,11 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a view of the portion of this map whose keys are less than (or equal
      * to, if inclusive is true) toKey.
+     * 
+     * @param toKey     the key at which to end
+     * @param inclusive whether or not to include toKey in the map
+     * 
+     * @return the sub-value mapping
      */
     public NavigableMap<K, V> headMap(K toKey, boolean inclusive) {
         return subMap(firstEntry().getKey(), true, toKey, inclusive);
@@ -353,6 +464,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a key-value mapping associated with the least key strictly greater
      * than the given key, or null if there is no such key.
+     * 
+     * @return the key-value mapping
      */
     public Map.Entry<K, V> higherEntry(K key) {
         return tailMap(key, false).firstEntry();
@@ -361,6 +474,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns the least key strictly greater than the given key, or null if there
      * is no such key.
+     * 
+     * @return the key
      */
     public K higherKey(K key) {
         return higherEntry(key).getKey();
@@ -369,13 +484,17 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a key-value mapping associated with the greatest key in this map, or
      * null if the map is empty.
+     * 
+     * @return the key-value mapping
      */
     public Map.Entry<K, V> lastEntry() {
         return size() == 1 ? root : lastParent().getRight();
     }
 
-    /*
+    /**
      * Helper method to find the parent of the last entry
+     * 
+     * @return the parent entry
      */
     private TreeMapEntry lastParent() {
         TreeMapEntry tmp_p = null;
@@ -390,6 +509,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a key-value mapping associated with the greatest key strictly less
      * than the given key, or null if there is no such key.
+     * 
+     * @return the key-value mapping
      */
     public Map.Entry<K, V> lowerEntry(K key) {
         return headMap(key, false).firstEntry();
@@ -398,6 +519,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns the greatest key strictly less than the given key, or null if there
      * is no such key.
+     * 
+     * @return the key
      */
     public K lowerKey(K key) {
         return lowerEntry(key).getKey();
@@ -405,6 +528,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
     /**
      * Returns a NavigableSet view of the keys contained in this map.
+     * 
+     * @return the key set
      */
     public NavigableSet<K> navigableKeySet() {
         NavigableSet<K> ret = new TreeSet<K>();
@@ -415,6 +540,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Removes and returns a key-value mapping associated with the least key in this
      * map, or null if the map is empty.
+     * 
+     * @return the key-value mapping that was removed
      */
     public Map.Entry<K, V> pollFirstEntry() {
         TreeMapEntry node = firstParent();
@@ -427,6 +554,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Removes and returns a key-value mapping associated with the greatest key in
      * this map, or null if the map is empty.
+     * 
+     * @return the key-value mapping that was removed
      */
     public Map.Entry<K, V> pollLastEntry() {
         TreeMapEntry node = firstParent();
@@ -439,6 +568,13 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a view of the portion of this map whose keys range from fromKey to
      * toKey.
+     * 
+     * @param fromKey       the key from which to start
+     * @param fromInclusive whether or not to include fromKey in the submap
+     * @param toKey         the key at which to end
+     * @param toInclusive   whether or not to include toKey in the submap
+     * 
+     * @return the sub-view of the map
      */
     public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
         return new SubTreeMap(fromKey, fromInclusive, toKey, toInclusive);
@@ -447,6 +583,11 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a view of the portion of this map whose keys range from fromKey,
      * inclusive, to toKey, exclusive.
+     * 
+     * @param fromKey the key at which to start
+     * @param toKey   the key at which to end
+     * 
+     * @return the sub-view of the map
      */
     public SortedMap<K, V> subMap(K fromKey, K toKey) {
         return subMap(fromKey, true, toKey, false);
@@ -455,6 +596,9 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a view of the portion of this map whose keys are greater than or
      * equal to fromKey.
+     * 
+     * @param fromKey the key at which to start
+     * @return the sub-view of the map
      */
     public SortedMap<K, V> tailMap(K fromKey) {
         return tailMap(fromKey, true);
@@ -463,10 +607,18 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * Returns a view of the portion of this map whose keys are greater than (or
      * equal to, if inclusive is true) fromKey.
+     * 
+     * @param fromKey   key at which to start
+     * @param inclusive whether ot not to include fromKey in the map
+     * @return the sub-view of the map
      */
     public NavigableMap<K, V> tailMap(K fromKey, boolean inclusive) {
         return subMap(fromKey, inclusive, lastEntry().getKey(), true);
     }
+
+    /*
+     * Private inner classes
+     */
 
     private class SubTreeMap extends TreeMap<K, V> {
         public SubTreeMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
@@ -738,13 +890,24 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             return getKey().compareTo(k);
         }
 
+        /**
+         * Compare this entry to an object based on its key.
+         * 
+         * @param o
+         * @return
+         */
         protected int compareValue(Object o) {
-            return 0;
-        }
-    }
+            if (getKey() == null && o == null) {
+                return 0;
+            }
 
-    @Override
-    public Comparator<? super K> comparator() {
-        return comparator;
+            K k = (K) o;
+
+            if (comparator != null) {
+                return comparator.compare(getKey(), k);
+            }
+
+            return getKey().compareTo(k);
+        }
     }
 }
