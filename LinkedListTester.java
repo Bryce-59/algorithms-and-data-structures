@@ -1,4 +1,6 @@
 import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,6 +13,11 @@ public class LinkedListTester {
     static int numTests = 0;
     static int failedTests = 0;
 
+    /**
+     * The main method runs the tests.
+     * 
+     * @param args Not used
+     */
     public static void main(String[] args) {
         numTests = 0;
         failedTests = 0;
@@ -48,8 +55,8 @@ public class LinkedListTester {
      * Tests for the additive methods, including:
      * add(E e)
      * add(int index, E element)
-     * TODO: addAll(Collection<? extends E> c)
-     * TODO: addAll(int index, Collection<? extends E> c)
+     * addAll(Collection<? extends E> c)
+     * addAll(int index, Collection<? extends E> c)
      * addFirst(E e)
      * addLast(E e)
      * offer(E e)
@@ -155,16 +162,36 @@ public class LinkedListTester {
 
     /**
      * Tests for methods that add to an arbitrary location in the list, including:
-     * TODO: addAll(Collection<? extends E> c)
-     * TODO: addAll(int index, Collection<? extends E> c)
+     * addAll(Collection<? extends E> c)
+     * addAll(int index, Collection<? extends E> c)
      */
     private static void addAllTests() {
+        final int SIZE = 6;
+        ArrayList<Integer> inputs = new ArrayList<>(SIZE);
+        for (int i = 0; i < SIZE; i++) {
+            inputs.add((int) (SIZE * Math.random()));
+        }
+        LinkedList<Integer> list = new LinkedList<>();
+        list.addAll(inputs);
+
+        String expected = inputs.toString();
+        String actual = list.toString();
+        printTest(expected, actual, "addAll(Collection<? Extends E> c)");
+
+        ArrayList<Integer> inputs2 = new ArrayList<>();
+        inputs2.addAll(inputs);
+        inputs2.addAll(1, inputs);
+        list.addAll(1, inputs);
+
+        expected = inputs2.toString();
+        actual = list.toString();
+        printTest(expected, actual, "addAll(int index, Collection<? extends E> c)");
     }
 
     /**
      * Tests for methods that check if a list has an element, including:
      * contains(Object o)
-     * TODO: containsAll(Collection<?> c)
+     * containsAll(Collection<?> c)
      */
     private static void containsTests() {
         String[] inputs = new String[] { "M", "Y", "C", "R", "O", "F", "T" };
@@ -183,6 +210,20 @@ public class LinkedListTester {
         printTest(expected, actual, "contains(Object o)");
         actual = "" + list.contains(2);
         printTest(expected, actual, "contains(Object o)");
+
+        ArrayList<String> inputs2 = new ArrayList<>(Arrays.asList(inputs));
+
+        expected = "" + true;
+        actual = "" + list.containsAll(inputs2);
+        printTest(expected, actual, "containsAll(Object o)");
+        expected = "" + true;
+        actual = "" + list.containsAll(inputs2.subList(1, inputs2.size() - 2));
+        printTest(expected, actual, "containsAll(Object o)");
+
+        inputs2.add("Ratatouille");
+        expected = "" + false;
+        actual = "" + list.containsAll(inputs2);
+        printTest(expected, actual, "containsAll(Object o)");
     }
 
     /**
@@ -336,33 +377,78 @@ public class LinkedListTester {
 
     /**
      * Tests for methods involving iterator classes, including:
-     * TODO: descendingIterator()
-     * TODO: listIterator()
-     * TODO: listIterator(int index)
+     * descendingIterator()
+     * listIterator()
+     * listIterator(int index)
      * iterator()
      */
     private static void iteratorTests() {
-        final int SIZE = 100;
+        final int SIZE = 10;
         final int NUM_TRIALS = 3;
         final int[] inputs = new int[SIZE];
         for (int i = 0; i < NUM_TRIALS; i++) {
             LinkedList<Integer> list = new LinkedList<>();
+            LinkedList<Integer> list2 = new LinkedList<>();
             for (int j = 0; j < inputs.length; j++) {
                 inputs[j] = (int) (SIZE * Math.random());
                 list.addLast(inputs[j]);
+                list2.addLast(inputs[j]);
             }
 
             Iterator<Integer> itr = list.iterator();
+            ListIterator<Integer> itr_list = list2.listIterator();
             int x = -1;
+            int y = -1;
             printTest(itr.hasNext(), true, "iterator.hasNext()");
-            while (itr.hasNext()) {
+            printTest(itr_list.hasNext(), true, "listIterator.hasNext()");
+            int index = 0;
+            while (itr.hasNext() && itr_list.hasNext()) {
                 x = itr.next();
+                y = itr_list.next();
                 itr.remove();
+                itr_list.remove();
+
+                int expected = inputs[index];
+                int actual = x;
+                int actual_list = y;
+                printTest(expected, actual, "iterator.next()");
+                printTest(expected, actual_list, "listIterator.next()");
+                index++;
             }
-            int expected = inputs[SIZE - 1];
-            int actual = x;
-            printTest(expected, actual, "iterator.next()");
             printTest("[]", list.toString(), "iterator.remove()");
+            printTest("[]", list2.toString(), "iterator.remove()");
+
+            list = new LinkedList<>();
+            list2 = new LinkedList<>();
+            for (int j = 0; j < inputs.length; j++) {
+                inputs[j] = (int) (SIZE * Math.random());
+                list.addLast(inputs[j]);
+                list2.addLast(inputs[j]);
+            }
+
+            itr = list.descendingIterator();
+            itr_list = list2.listIterator(list2.size());
+            printTest(itr.hasNext(), true, "descendingIterator.hasNext()");
+            printTest(itr_list.hasPrevious(), true, "listIterator.hasPrevious()");
+            index = 0;
+            while (itr.hasNext() && itr_list.hasPrevious()) {
+                x = itr.next();
+                y = itr_list.previous();
+
+                itr.remove();
+                itr_list.remove();
+
+                int expected = inputs[SIZE - 1 - index];
+                int actual = x;
+                int actual_list = y;
+                printTest(expected, actual, "descendingIterator.next()");
+                printTest(expected, actual_list, "listIterator.next()");
+                index++;
+            }
+            printTest(itr.hasNext(), false, "descendingIterator.hasNext()");
+            printTest(itr_list.hasPrevious(), false, "listIterator.hasPrevious()");
+            printTest("[]", list.toString(), "descendingIterator.remove()");
+            printTest("[]", list2.toString(), "listIterator.remove()");
         }
     }
 

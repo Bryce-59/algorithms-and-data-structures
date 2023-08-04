@@ -144,6 +144,7 @@ public class LinkedList<E> implements List<E>, Deque<E> {
                 throw new NullPointerException("LinkedList may not contain null elements.");
             }
             it.add(element);
+            it.next();
         }
         return !c.isEmpty();
     }
@@ -991,7 +992,7 @@ public class LinkedList<E> implements List<E>, Deque<E> {
             add.setPrev(prev);
             to_remove = null;
 
-            index++;
+            // index++;
             size++;
         }
 
@@ -1092,6 +1093,7 @@ public class LinkedList<E> implements List<E>, Deque<E> {
 
             if (prev == to_remove) {
                 prev = to_remove.getPrev();
+                index--;
             }
 
             to_remove.getPrev().setNext(to_remove.getNext());
@@ -1099,7 +1101,6 @@ public class LinkedList<E> implements List<E>, Deque<E> {
             to_remove.setPrev(null);
             to_remove.setNext(null);
             to_remove = null;
-            index--;
 
             size--;
         }
