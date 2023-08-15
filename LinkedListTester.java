@@ -51,6 +51,10 @@ public class LinkedListTester {
         numTests++;
     }
 
+    public void printTree() {
+        printTree(root, "");
+    }
+
     /**
      * Tests for the additive methods, including:
      * add(E e)

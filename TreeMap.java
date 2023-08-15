@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -16,6 +17,13 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     int size = 0;
     Comparator<? super K> comparator;
 
+    public TreeMap() {
+    }
+
+    public TreeMap(Map<? extends K, ? extends V> m) {
+        putAll(m);
+    }
+
     /**
      * Returns the first key currently in this map.
      * 
@@ -25,8 +33,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public K firstKey() {
         if (isEmpty()) {
-            throw new NoSuchElementException("The map is empty.")
-        } 
+            throw new NoSuchElementException("The map is empty.");
+        }
         return firstEntry().getKey();
     }
 
@@ -39,7 +47,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public K lastKey() {
         if (isEmpty()) {
-            throw new NoSuchElementException("The map is empty.")
+            throw new NoSuchElementException("The map is empty.");
         }
         return lastEntry().getKey();
     }
@@ -123,7 +131,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the size of the map
      */
     public int size() {
-        return size();
+        return size;
     }
 
     /**
@@ -144,10 +152,25 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @exception ClassCastException if key is of an inappopriate type.
      */
     public boolean containsKey(Object key) {
-        if ((root.getKey() == null && key == null) || root.getKey().equals(key)) {
+        if (isEmpty()) {
+            return false;
+        } else if (root.compareKey(key) == 0) {
             return true;
         }
+
         return getParent(key).getChild(key) != null;
+    }
+
+    // DELETE
+    public void printTree() {
+        printTree(root, "");
+    }
+
+    private void printTree(TreeMapEntry n, String spaces) {
+        if (n != null) {
+            printTree(n.getRight(), spaces + "    ");
+            printTree(n.getLeft(), spaces + "    ");
+        }
     }
 
     /**
@@ -178,7 +201,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             if (ret) {
                 return true;
             }
-            ret |= current.compareValue(value) == 0;
+            ret |= current.getValue() != null ? current.getValue().equals(value) : value == null;
             if (ret) {
                 return true;
             }
@@ -200,8 +223,9 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         if (root.compareKey(key) == 0) {
             return root.getValue();
         }
-        TreeMapEntry tmp = getParent(key);
-        return tmp != null ? tmp.getChild(key).getValue() : null;
+        TreeMapEntry tmp_p = getParent(key);
+        TreeMapEntry tmp = tmp_p.getChild(key);
+        return tmp != null ? tmp.getValue() : null;
     }
 
     /**
@@ -234,7 +258,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         while (tmp != null && (tmp.compareKey(key) != 0)) {
             tmp_p = tmp;
-            tmp = tmp.compareKey(key) < 0 ? tmp.getLeft() : tmp.getRight();
+            tmp = tmp.compareKey(key) > 0 ? tmp.getLeft() : tmp.getRight();
         }
         return tmp_p;
     }
@@ -251,6 +275,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         V ret = null;
         if (size() == 0) {
             root = new TreeMapEntry(key, value);
+            size++;
             return ret;
         }
 
@@ -287,21 +312,38 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public V remove(Object key) {
         V ret = null;
-        if (size() == 1) {
+        printTree();
+        if (isEmpty()) {
+            return null;
+        } else if (root.compareKey(key) == 0) {
             ret = root.getValue();
-            root = null;
-            size--;
-            return ret;
+            rootRemove();
+        } else {
+            TreeMapEntry tmp_p = getParent(key);
+            TreeMapEntry tmp = tmp_p.getChild(key);
+            ret = tmp != null ? tmp.getValue() : null;
+            if (tmp == null) {
+                return null;
+            }
+            tmp_p.remove(tmp);
         }
-
-        TreeMapEntry tmp_p = getParent(key);
-        TreeMapEntry tmp = tmp_p.getChild(key);
-        ret = tmp.getValue();
-        tmp_p.remove(tmp);
-        size--;
-
         rebalance();
+        size--;
         return ret;
+    }
+
+    /**
+     * Helper method to remove and replace the root of the tree.
+     */
+    private void rootRemove() {
+        TreeMapEntry tmp = new TreeMapEntry(null, null);
+        tmp.setLeft(root);
+
+        tmp.remove(root);
+        root = tmp.getLeft();
+
+        tmp.setLeft(null);
+        tmp = null;
     }
 
     /**
@@ -360,7 +402,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key
      */
     public K ceilingKey(K key) {
-        return ceilingEntry(key).getKey();
+        Entry<K, V> e = ceilingEntry(key);
+        return e == null ? root == null ? null : root.getKey() : e.getKey();
     }
 
     /**
@@ -388,7 +431,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the reverse order view
      */
     public NavigableMap<K, V> descendingMap() {
-        return null; // TODO
+        return new DescendingTreeMap<>(this);
     }
 
     /**
@@ -398,7 +441,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key-value mapping
      */
     public Map.Entry<K, V> firstEntry() {
-        return size() == 1 ? root : firstParent().getLeft();
+        TreeMapEntry tmp_p = firstParent();
+        return tmp_p == null ? root : tmp_p.getLeft();
     }
 
     /**
@@ -408,10 +452,12 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     private TreeMapEntry firstParent() {
         TreeMapEntry tmp_p = null;
-        TreeMapEntry tmp = root;
-        while (tmp.hasLeft()) {
-            tmp_p = tmp;
-            tmp = tmp.getLeft();
+        if (!isEmpty()) {
+            TreeMapEntry tmp = root;
+            while (tmp.hasLeft()) {
+                tmp_p = tmp;
+                tmp = tmp.getLeft();
+            }
         }
         return tmp_p;
     }
@@ -433,7 +479,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key
      */
     public K floorKey(K key) {
-        return floorEntry(key).getKey();
+        Entry<K, V> e = floorEntry(key);
+        return e == null ? root == null ? null : root.getKey() : e.getKey();
     }
 
     /**
@@ -478,7 +525,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key
      */
     public K higherKey(K key) {
-        return higherEntry(key).getKey();
+        Entry<K, V> e = higherEntry(key);
+        return e == null ? root == null ? null : root.getKey() : e.getKey();
     }
 
     /**
@@ -523,7 +571,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key
      */
     public K lowerKey(K key) {
-        return lowerEntry(key).getKey();
+        Entry<K, V> e = lowerEntry(key);
+        return e == null ? root == null ? null : root.getKey() : e.getKey();
     }
 
     /**
@@ -544,9 +593,20 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key-value mapping that was removed
      */
     public Map.Entry<K, V> pollFirstEntry() {
+        if (isEmpty()) {
+            return null;
+        }
+
         TreeMapEntry node = firstParent();
-        TreeMapEntry ret = firstParent().getLeft();
-        node.remove(ret);
+        TreeMapEntry ret;
+        if (node == null) {
+            ret = root;
+            rootRemove();
+        } else {
+            ret = node.getLeft();
+            node.remove(ret);
+        }
+        size--;
         rebalance();
         return ret;
     }
@@ -558,9 +618,20 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key-value mapping that was removed
      */
     public Map.Entry<K, V> pollLastEntry() {
-        TreeMapEntry node = firstParent();
-        TreeMapEntry ret = node.getRight();
-        node.remove(ret);
+        if (isEmpty()) {
+            return null;
+        }
+
+        TreeMapEntry node = lastParent();
+        TreeMapEntry ret;
+        if (node == null) {
+            ret = root;
+            rootRemove();
+        } else {
+            ret = node.getRight();
+            node.remove(ret);
+        }
+        size--;
         rebalance();
         return ret;
     }
@@ -577,7 +648,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the sub-view of the map
      */
     public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-        return new SubTreeMap(fromKey, fromInclusive, toKey, toInclusive);
+        return new SubTreeMap<K, V>(this, fromKey, fromInclusive, toKey, toInclusive);
     }
 
     /**
@@ -619,11 +690,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /*
      * Private inner classes
      */
-
-    private class SubTreeMap extends TreeMap<K, V> {
-        public SubTreeMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-        }
-    }
 
     /**
      * An inner class to represent an entry of the TreeMap
@@ -689,11 +755,17 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
          * @param o the object to compare
          * @return whether the object is equal
          */
+        @SuppressWarnings("unchecked")
         public boolean equals(Object o) {
-            if (o != null && o instanceof TreeMapEntry) {
+            if (o == null) {
+                return false;
+            }
+
+            try {
                 TreeMapEntry rhs = (TreeMapEntry) o;
-                return this.getKey().equals(rhs.getKey()) && this.getValue() == null ? rhs.getValue() == null
+                return compareKey(rhs.getKey()) == 0 && this.getValue() == null ? rhs.getValue() == null
                         : this.getValue().equals(rhs.getValue());
+            } catch (ClassCastException e) {
             }
             return false;
         }
@@ -806,7 +878,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
          * @param child the child to remove.
          */
         protected void remove(TreeMapEntry child) {
-            if (getChild(child) == null) {
+            if (getChild(child.key) == null) {
                 throw new IllegalArgumentException("Cannot remove child that does not exist.");
             }
 
@@ -815,31 +887,34 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 TreeMapEntry tmp = child.getLeft();
                 while (tmp.hasRight()) {
                     tmp_p = tmp;
-                    tmp = child.getRight();
+                    tmp = tmp.getRight();
                 }
                 key = tmp.getKey();
                 value = tmp.getValue();
                 tmp_p.remove(tmp);
-            } else if (child.hasLeft()) {
-                if (getLeft().equals(child)) {
-                    setLeft(child.getLeft());
-                } else {
-                    setRight(child.getLeft());
-                }
-                child.setLeft(null);
-            } else if (child.hasRight()) {
-                if (getLeft().equals(child)) {
-                    setLeft(child.getRight());
-                } else {
-                    setRight(child.getRight());
-                }
-                child.setRight(null);
             } else {
-                if (getLeft().equals(child)) {
-                    setLeft(null);
+                if (child.hasLeft()) {
+                    if (getLeft() != null && getLeft().equals(child)) {
+                        setLeft(child.getLeft());
+                    } else {
+                        setRight(child.getLeft());
+                    }
+                    child.setLeft(null);
+                } else if (child.hasRight()) {
+                    if (getLeft() != null && getLeft().equals(child)) {
+                        setLeft(child.getRight());
+                    } else {
+                        setRight(child.getRight());
+                    }
+                    child.setRight(null);
                 } else {
-                    setRight(null);
+                    if (getLeft() != null && getLeft().equals(child)) {
+                        setLeft(null);
+                    } else {
+                        setRight(null);
+                    }
                 }
+                size--;
             }
         }
 
@@ -889,25 +964,488 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
             return getKey().compareTo(k);
         }
+    }
 
-        /**
-         * Compare this entry to an object based on its key.
-         * 
-         * @param o
-         * @return
-         */
-        protected int compareValue(Object o) {
-            if (getKey() == null && o == null) {
+    /*
+     * Special view classes
+     */
+
+    private class SubTreeMap<K extends Comparable<K>, V extends Comparable<V>> implements NavigableMap<K, V> {
+        TreeMap<K, V> treeMap;
+
+        K fromKey;
+        boolean fromInclusive;
+        K toKey;
+        boolean toInclusive;
+
+        public SubTreeMap(TreeMap<K, V> treeMap, K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+            this.treeMap = treeMap;
+            this.fromKey = fromKey;
+            this.fromInclusive = fromInclusive;
+            this.toKey = toKey;
+            this.toInclusive = toInclusive;
+        }
+
+        private boolean inBounds(Object key) {
+            K k = (K) key;
+
+            if (fromInclusive ? compareKey(k, fromKey) < 0 : comparator().compare(k, fromKey) <= 0) {
+                return false;
+            } else if (toInclusive ? compareKey(toKey, k) <= 0 : compareKey(toKey, k) < 0) {
+                return false;
+            }
+            return true;
+        }
+
+        private int compareKey(K lhs, K rhs) {
+            if (lhs == null && rhs == null) {
                 return 0;
             }
+            if (comparator() != null) {
+                return comparator().compare(lhs, rhs);
+            }
+            return lhs.compareTo(rhs);
+        }
 
-            K k = (K) o;
+        @Override
+        public Comparator<? super K> comparator() {
+            return treeMap.comparator();
+        }
 
-            if (comparator != null) {
-                return comparator.compare(getKey(), k);
+        @Override
+        public K firstKey() {
+            return firstEntry().getKey();
+        }
+
+        @Override
+        public K lastKey() {
+            return lastEntry().getKey();
+        }
+
+        @Override
+        public Set<K> keySet() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'keySet'");
+        }
+
+        @Override
+        public Collection<V> values() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'values'");
+        }
+
+        @Override
+        public Set<Entry<K, V>> entrySet() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'entrySet'");
+        }
+
+        @Override
+        public int size() {
+            return keySet().size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return size() == 0;
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'containsKey'");
+        }
+
+        @Override
+        public boolean containsValue(Object value) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'containsValue'");
+        }
+
+        @Override
+        public V get(Object key) {
+            if (!inBounds(key)) {
+                throw new IllegalArgumentException("Out-of-bounds key: " + key.toString());
             }
 
-            return getKey().compareTo(k);
+            return treeMap.get(key);
+        }
+
+        @Override
+        public V put(K key, V value) {
+            if (!inBounds(key)) {
+                throw new IllegalArgumentException("Out-of-bounds key: " + key.toString());
+            }
+
+            return treeMap.put(key, value);
+        }
+
+        @Override
+        public V remove(Object key) {
+            if (!inBounds(key)) {
+                throw new IllegalArgumentException("Out-of-bounds key: " + key.toString());
+            }
+
+            return treeMap.remove(key);
+        }
+
+        @Override
+        public void putAll(Map<? extends K, ? extends V> m) {
+            for (K k : m.keySet()) {
+                if (!inBounds(k)) {
+                    throw new IllegalArgumentException("Out-of-bounds key: " + k.toString());
+                }
+            }
+            treeMap.putAll(m);
+
+        }
+
+        @Override
+        public void clear() {
+            for (K k : keySet()) {
+                treeMap.remove(k);
+            }
+        }
+
+        @Override
+        public Entry<K, V> lowerEntry(K key) {
+            if (!inBounds(key)) {
+                if (compareKey(toKey, key) <= 0) {
+                    return lastEntry();
+                } else {
+                    return null;
+                }
+            }
+            return treeMap.lowerEntry(key);
+        }
+
+        @Override
+        public K lowerKey(K key) {
+            return lowerEntry(key).getKey();
+        }
+
+        @Override
+        public Entry<K, V> floorEntry(K key) {
+            if (!inBounds(key)) {
+                if (compareKey(toKey, key) < 0) {
+                    return lastEntry();
+                } else {
+                    return null;
+                }
+            }
+            return treeMap.floorEntry(key);
+        }
+
+        @Override
+        public K floorKey(K key) {
+            return floorEntry(key).getKey();
+        }
+
+        @Override
+        public Entry<K, V> ceilingEntry(K key) {
+            if (!inBounds(key)) {
+                if (compareKey(key, fromKey) < 0) {
+                    return firstEntry();
+                } else {
+                    return null;
+                }
+            }
+            return treeMap.ceilingEntry(key);
+        }
+
+        @Override
+        public K ceilingKey(K key) {
+            return ceilingEntry(key).getKey();
+        }
+
+        @Override
+        public Entry<K, V> higherEntry(K key) {
+            if (!inBounds(key)) {
+                if (compareKey(key, fromKey) <= 0) {
+                    return firstEntry();
+                } else {
+                    return null;
+                }
+            }
+            return treeMap.higherEntry(key);
+        }
+
+        @Override
+        public K higherKey(K key) {
+            return higherEntry(key).getKey();
+        }
+
+        @Override
+        public Entry<K, V> firstEntry() {
+            return fromInclusive ? treeMap.ceilingEntry(fromKey) : treeMap.higherEntry(fromKey);
+        }
+
+        @Override
+        public Entry<K, V> lastEntry() {
+            return toInclusive ? treeMap.floorEntry(toKey) : treeMap.lowerEntry(toKey);
+        }
+
+        @Override
+        public Entry<K, V> pollFirstEntry() {
+            Entry<K, V> ret = firstEntry();
+            remove(ret.getKey());
+            return ret;
+        }
+
+        @Override
+        public Entry<K, V> pollLastEntry() {
+            Entry<K, V> ret = lastEntry();
+            remove(ret.getKey());
+            return ret;
+        }
+
+        @Override
+        public NavigableMap<K, V> descendingMap() {
+            return new DescendingTreeMap<K, V>(this);
+        }
+
+        @Override
+        public NavigableSet<K> navigableKeySet() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'navigableKeySet'");
+        }
+
+        @Override
+        public NavigableSet<K> descendingKeySet() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'descendingKeySet'");
+        }
+
+        @Override
+        public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'subMap'");
+        }
+
+        @Override
+        public NavigableMap<K, V> headMap(K toKey, boolean inclusive) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'headMap'");
+        }
+
+        @Override
+        public NavigableMap<K, V> tailMap(K fromKey, boolean inclusive) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'tailMap'");
+        }
+
+        @Override
+        public SortedMap<K, V> subMap(K fromKey, K toKey) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'subMap'");
+        }
+
+        @Override
+        public SortedMap<K, V> headMap(K toKey) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'headMap'");
+        }
+
+        @Override
+        public SortedMap<K, V> tailMap(K fromKey) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'tailMap'");
+        }
+
+    }
+
+    /*
+     * Private inner classes
+     */
+
+    private class DescendingTreeMap<K extends Comparable<K>, V extends Comparable<V>> implements NavigableMap<K, V> {
+        NavigableMap<K, V> treeMap;
+
+        public DescendingTreeMap(NavigableMap<K, V> treeMap) {
+            this.treeMap = treeMap;
+        }
+
+        @Override
+        public Comparator<? super K> comparator() {
+            return treeMap.comparator().reversed();
+        }
+
+        @Override
+        public K firstKey() {
+            return treeMap.lastKey();
+        }
+
+        @Override
+        public K lastKey() {
+            return treeMap.firstKey();
+        }
+
+        @Override
+        public Set<K> keySet() {
+            return navigableKeySet();
+        }
+
+        @Override
+        public Collection<V> values() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'values'");
+        }
+
+        @Override
+        public Set<Entry<K, V>> entrySet() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'entrySet'");
+        }
+
+        @Override
+        public int size() {
+            return treeMap.size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return treeMap.isEmpty();
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            return treeMap.containsKey(key);
+        }
+
+        @Override
+        public boolean containsValue(Object value) {
+            return treeMap.containsValue(value);
+        }
+
+        @Override
+        public V get(Object key) {
+            return treeMap.get(key);
+        }
+
+        @Override
+        public V put(K key, V value) {
+            return treeMap.put(key, value);
+        }
+
+        @Override
+        public V remove(Object key) {
+            return treeMap.remove(key);
+        }
+
+        @Override
+        public void putAll(Map<? extends K, ? extends V> m) {
+            treeMap.putAll(m);
+        }
+
+        @Override
+        public void clear() {
+            treeMap.clear();
+        }
+
+        @Override
+        public Entry<K, V> lowerEntry(K key) {
+            return treeMap.higherEntry(key);
+        }
+
+        @Override
+        public K lowerKey(K key) {
+            return treeMap.higherKey(key);
+        }
+
+        @Override
+        public Entry<K, V> floorEntry(K key) {
+            return treeMap.ceilingEntry(key);
+        }
+
+        @Override
+        public K floorKey(K key) {
+            return treeMap.ceilingKey(key);
+        }
+
+        @Override
+        public Entry<K, V> ceilingEntry(K key) {
+            return treeMap.floorEntry(key);
+        }
+
+        @Override
+        public K ceilingKey(K key) {
+            return treeMap.floorKey(key);
+        }
+
+        @Override
+        public Entry<K, V> higherEntry(K key) {
+            return treeMap.lowerEntry(key);
+        }
+
+        @Override
+        public K higherKey(K key) {
+            return treeMap.lowerKey(key);
+        }
+
+        @Override
+        public Entry<K, V> firstEntry() {
+            return treeMap.lastEntry();
+        }
+
+        @Override
+        public Entry<K, V> lastEntry() {
+            return treeMap.firstEntry();
+        }
+
+        @Override
+        public Entry<K, V> pollFirstEntry() {
+            return treeMap.pollLastEntry();
+        }
+
+        @Override
+        public Entry<K, V> pollLastEntry() {
+            return treeMap.pollFirstEntry();
+        }
+
+        @Override
+        public NavigableMap<K, V> descendingMap() {
+            return treeMap;
+        }
+
+        @Override
+        public NavigableSet<K> navigableKeySet() {
+            return treeMap.descendingKeySet();
+        }
+
+        @Override
+        public NavigableSet<K> descendingKeySet() {
+            return treeMap.navigableKeySet();
+        }
+
+        @Override
+        public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'subMap'");
+        }
+
+        @Override
+        public NavigableMap<K, V> headMap(K toKey, boolean inclusive) {
+            return subMap(firstKey(), true, toKey, inclusive);
+        }
+
+        @Override
+        public NavigableMap<K, V> tailMap(K fromKey, boolean inclusive) {
+            return subMap(fromKey, inclusive, lastKey(), true);
+        }
+
+        @Override
+        public SortedMap<K, V> subMap(K fromKey, K toKey) {
+            return subMap(fromKey, true, toKey, false);
+        }
+
+        @Override
+        public SortedMap<K, V> headMap(K toKey) {
+            return headMap(toKey, false);
+        }
+
+        @Override
+        public SortedMap<K, V> tailMap(K fromKey) {
+            return tailMap(fromKey, true);
         }
     }
 }
