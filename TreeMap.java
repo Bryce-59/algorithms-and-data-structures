@@ -111,6 +111,32 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         return ret;
     }
 
+    protected Set<Entry<K, V>> entrySetInRange(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+        Set<Entry<K, V>> ret = new TreeSet<>();
+        entrySetInRangeHelper(ret, root, fromKey, fromInclusive, toKey, toInclusive);
+        return ret;
+    }
+
+    private void entrySetInRangeHelper(Set<Entry<K, V>> set, TreeMapEntry current, K fromKey, boolean fromInclusive,
+            K toKey, boolean toInclusive) {
+
+        if (current != null) {
+            if (current.compareKey(fromKey) > 0) {
+                entrySetInRangeHelper(set, current.getLeft(), fromKey, fromInclusive, toKey, toInclusive);
+            }
+
+            boolean isFrom = current.compareKey(fromKey) == 0;
+            boolean isTo = current.compareKey(toKey) == 0;
+            if ((!isFrom || (isFrom && fromInclusive)) && (!isTo || (isTo && toInclusive))) {
+                set.add(current);
+            }
+
+            if (current.compareKey(toKey) < 0) {
+                entrySetInRangeHelper(set, current.getRight(), fromKey, fromInclusive, toKey, toInclusive);
+            }
+        }
+    }
+
     /**
      * Recursive helper method for entrySet().
      * 
@@ -392,7 +418,69 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key-value mapping
      */
     public Map.Entry<K, V> ceilingEntry(K key) {
-        return tailMap(key, true).firstEntry();
+        return upEntry(key, true);
+    }
+
+    private Map.Entry<K, V> upEntry(K key, boolean inclusive) {
+        TreeMapEntry save = null;
+        TreeMapEntry tmp_p = null;
+        TreeMapEntry tmp = root;
+        while (tmp != null) {
+            if (tmp.compareKey(key) < 0) {
+                tmp_p = tmp;
+                tmp = tmp.getRight();
+            } else if (tmp.compareKey(key) > 0) {
+                save = tmp_p;
+                tmp_p = tmp;
+                tmp = tmp.getLeft();
+            } else {
+                if (inclusive) {
+                    return tmp;
+                }
+
+                if (!tmp.hasRight()) {
+                    return save;
+                }
+
+                tmp = tmp.getRight();
+                while (tmp.hasLeft()) {
+                    tmp = tmp.getLeft();
+                }
+                return tmp;
+            }
+        }
+        return tmp_p.compareKey(key) > 0 ? tmp_p : save;
+    }
+
+    private Map.Entry<K, V> downEntry(K key, boolean inclusive) {
+        TreeMapEntry save = null;
+        TreeMapEntry tmp_p = null;
+        TreeMapEntry tmp = root;
+        while (tmp != null) {
+            if (tmp.compareKey(key) > 0) {
+                tmp_p = tmp;
+                tmp = tmp.getLeft();
+            } else if (tmp.compareKey(key) < 0) {
+                save = tmp_p;
+                tmp_p = tmp;
+                tmp = tmp.getRight();
+            } else {
+                if (inclusive) {
+                    return tmp;
+                }
+
+                if (!tmp.hasLeft()) {
+                    return save;
+                }
+
+                tmp = tmp.getLeft();
+                while (tmp.hasRight()) {
+                    tmp = tmp.getRight();
+                }
+                return tmp;
+            }
+        }
+        return tmp_p.compareKey(key) < 0 ? tmp_p : save;
     }
 
     /**
@@ -469,7 +557,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key-value mapping
      */
     public Map.Entry<K, V> floorEntry(K key) {
-        return headMap(key, true).firstEntry();
+        return downEntry(key, true);
     }
 
     /**
@@ -515,7 +603,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key-value mapping
      */
     public Map.Entry<K, V> higherEntry(K key) {
-        return tailMap(key, false).firstEntry();
+        return upEntry(key, false);
     }
 
     /**
@@ -561,7 +649,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the key-value mapping
      */
     public Map.Entry<K, V> lowerEntry(K key) {
-        return headMap(key, false).firstEntry();
+        return downEntry(key, false);
     }
 
     /**
@@ -641,9 +729,9 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * toKey.
      * 
      * @param fromKey       the key from which to start
-     * @param fromInclusive whether or not to include fromKey in the submap
+     * @param fromInclusive whether or not to include fromKey in the subMap
      * @param toKey         the key at which to end
-     * @param toInclusive   whether or not to include toKey in the submap
+     * @param toInclusive   whether or not to include toKey in the subMap
      * 
      * @return the sub-view of the map
      */
@@ -980,6 +1068,10 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         boolean toInclusive;
 
         public SubTreeMap(TreeMap<K, V> treeMap, K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+            if (compareKey(toKey, fromKey) < 0) {
+                throw new IllegalArgumentException("invalid range");
+            }
+
             this.treeMap = treeMap;
             this.fromKey = fromKey;
             this.fromInclusive = fromInclusive;
@@ -1025,20 +1117,21 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         @Override
         public Set<K> keySet() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'keySet'");
+            return navigableKeySet();
         }
 
         @Override
         public Collection<V> values() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'values'");
+            ArrayList<V> ret = new ArrayList<>();
+            for (Entry<K, V> e : entrySet()) {
+                ret.add(e.getValue());
+            }
+            return ret;
         }
 
         @Override
         public Set<Entry<K, V>> entrySet() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'entrySet'");
+            return treeMap.entrySetInRange(fromKey, fromInclusive, toKey, toInclusive);
         }
 
         @Override
@@ -1053,20 +1146,21 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         @Override
         public boolean containsKey(Object key) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'containsKey'");
+            if (!inBounds(key)) {
+                return false;
+            }
+            return treeMap.containsKey(key);
         }
 
         @Override
         public boolean containsValue(Object value) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'containsValue'");
+            return values().contains(value);
         }
 
         @Override
         public V get(Object key) {
             if (!inBounds(key)) {
-                throw new IllegalArgumentException("Out-of-bounds key: " + key.toString());
+                return null;
             }
 
             return treeMap.get(key);
@@ -1084,7 +1178,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         @Override
         public V remove(Object key) {
             if (!inBounds(key)) {
-                throw new IllegalArgumentException("Out-of-bounds key: " + key.toString());
+                return null;
             }
 
             return treeMap.remove(key);
@@ -1111,7 +1205,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         @Override
         public Entry<K, V> lowerEntry(K key) {
             if (!inBounds(key)) {
-                if (compareKey(toKey, key) <= 0) {
+                if (compareKey(toKey, key) < 0) {
                     return lastEntry();
                 } else {
                     return null;
@@ -1128,7 +1222,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         @Override
         public Entry<K, V> floorEntry(K key) {
             if (!inBounds(key)) {
-                if (compareKey(toKey, key) < 0) {
+                if (compareKey(toKey, key) <= 0) {
                     return lastEntry();
                 } else {
                     return null;
@@ -1145,7 +1239,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         @Override
         public Entry<K, V> ceilingEntry(K key) {
             if (!inBounds(key)) {
-                if (compareKey(key, fromKey) < 0) {
+                if (compareKey(key, fromKey) <= 0) {
                     return firstEntry();
                 } else {
                     return null;
@@ -1162,7 +1256,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         @Override
         public Entry<K, V> higherEntry(K key) {
             if (!inBounds(key)) {
-                if (compareKey(key, fromKey) <= 0) {
+                if (compareKey(key, fromKey) < 0) {
                     return firstEntry();
                 } else {
                     return null;
@@ -1207,50 +1301,51 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         @Override
         public NavigableSet<K> navigableKeySet() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'navigableKeySet'");
+            NavigableSet<K> ret = new TreeSet();
+            Set<Entry<K, V>> tmp = entrySetInRange(fromKey, fromInclusive, toKey, toInclusive);
+            for (Entry<K, V> e : tmp) {
+                ret.add(e.getKey());
+            }
+            return ret;
         }
 
         @Override
         public NavigableSet<K> descendingKeySet() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'descendingKeySet'");
+            return navigableKeySet().descendingSet();
         }
 
         @Override
         public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'subMap'");
+            if (!inBounds(fromKey) || !inBounds(toKey)) {
+                throw new IllegalArgumentException("Out-of-bounds key");
+            }
+
+            return new SubTreeMap(treeMap, fromKey, fromInclusive, toKey, toInclusive);
         }
 
         @Override
         public NavigableMap<K, V> headMap(K toKey, boolean inclusive) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'headMap'");
+            return subMap(firstKey(), true, toKey, inclusive);
         }
 
         @Override
         public NavigableMap<K, V> tailMap(K fromKey, boolean inclusive) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'tailMap'");
+            return subMap(fromKey, inclusive, lastKey(), true);
         }
 
         @Override
         public SortedMap<K, V> subMap(K fromKey, K toKey) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'subMap'");
+            return subMap(fromKey, true, toKey, false);
         }
 
         @Override
         public SortedMap<K, V> headMap(K toKey) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'headMap'");
+            return headMap(toKey, false);
         }
 
         @Override
         public SortedMap<K, V> tailMap(K fromKey) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'tailMap'");
+            return tailMap(fromKey, true);
         }
 
     }

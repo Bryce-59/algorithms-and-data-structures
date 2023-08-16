@@ -114,7 +114,7 @@ public class TreeMapTests {
         }
 
         String expected = "8";
-        String actual = "" + tree.firstEntry();
+        String actual = tree.firstEntry() == null ? "null" : "" + tree.firstEntry().getKey();
         printTest(expected, actual, "firstEntry()");
 
         expected = "512";
@@ -134,7 +134,7 @@ public class TreeMapTests {
         expected = "96";
         actual = tree.lowerEntry(128) == null ? "null" : "" + tree.lowerEntry(128).getKey();
         printTest(expected, actual, "lowerEntry(K key)");
-        actual = tree.floorEntry(128) == null ? "null" : "" + tree.floorEntry(128).getKey();
+        actual = tree.floorEntry(127) == null ? "null" : "" + tree.floorEntry(127).getKey();
         printTest(expected, actual, "floorEntry(K key)");
     }
 
@@ -176,7 +176,7 @@ public class TreeMapTests {
         expected = "96";
         actual = "" + tree.lowerKey(128);
         printTest(expected, actual, "lowerKey(K key)");
-        actual = "" + tree.floorKey(128);
+        actual = "" + tree.floorKey(127);
         printTest(expected, actual, "floorKey(K key)");
     }
 
