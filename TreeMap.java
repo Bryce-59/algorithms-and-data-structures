@@ -174,7 +174,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         }
 
         TreeMapEntry tmp_p = getParent(key);
-        TreeMapEntry tmp = tmp_p.getChild(key);
+        TreeMapEntry tmp = tmp_p == null ? root : tmp_p.getChild(key);
         if (tmp != null) {
             ret = tmp.getValue();
             tmp.setValue(value);
@@ -206,7 +206,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public V remove(Object key) {
         V ret = null;
-        printTree();
         if (isEmpty()) {
             return null;
         } else if (root.compareKey(key) == 0) {
@@ -637,6 +636,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
     /**
      * Helper method to create a set of entries within a specified range
+     * 
      * @param set           the set to add entries to.
      * @param current       the current Entry to evaluate from.
      * @param fromKey       the key from which to start
@@ -662,6 +662,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 entrySetInRangeHelper(set, current.getRight(), fromKey, fromInclusive, toKey, toInclusive);
             }
         }
+    }
 
     /**
      * Helper method to find the parent of the first entry
@@ -757,7 +758,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     private void printTree(TreeMapEntry n, String spaces) {
         if (n != null) {
             printTree(n.getRight(), spaces + "    ");
-            System.out.println("(" + n.getKey() + ", " + n.getValue() + ")");
+            System.out.println(spaces + "(" + n.getKey() + ", " + n.getValue() + ")");
             printTree(n.getLeft(), spaces + "    ");
         }
     }
