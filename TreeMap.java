@@ -17,9 +17,17 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     int size = 0;
     Comparator<? super K> comparator;
 
+    /**
+     * Constructs an empty TreeMap
+     */
     public TreeMap() {
     }
 
+    /**
+     * Constructs a TreeMap from the entries in the specified map
+     * 
+     * @param m the specified map
+     */
     public TreeMap(Map<? extends K, ? extends V> m) {
         putAll(m);
     }
@@ -62,20 +70,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     }
 
     /**
-     * Recursive helper method for keySet().
-     * 
-     * @param set     the set to add keys to.
-     * @param current the current Entry to evaluate from.
-     */
-    private void keySetHelper(Set<K> set, TreeMapEntry current) {
-        if (current != null) {
-            keySetHelper(set, current.getLeft());
-            set.add(current.getKey());
-            keySetHelper(set, current.getRight());
-        }
-    }
-
-    /**
      * Returns a Collection of the values contained in this map.
      * 
      * @return a Collection of values.
@@ -87,20 +81,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     }
 
     /**
-     * Recursive helper method for values().
-     * 
-     * @param set     the collection to add values to.
-     * @param current the current Entry to evaluate from.
-     */
-    private void valuesHelper(Collection<V> set, TreeMapEntry current) {
-        if (current != null) {
-            valuesHelper(set, current.getLeft());
-            set.add(current.getValue());
-            valuesHelper(set, current.getRight());
-        }
-    }
-
-    /**
      * Returns a Set view of the entries contained in this map.
      * 
      * @return a Set view of entries.
@@ -109,46 +89,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         Set<Entry<K, V>> ret = new TreeSet<>();
         entrySetHelper(ret, root);
         return ret;
-    }
-
-    protected Set<Entry<K, V>> entrySetInRange(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-        Set<Entry<K, V>> ret = new TreeSet<>();
-        entrySetInRangeHelper(ret, root, fromKey, fromInclusive, toKey, toInclusive);
-        return ret;
-    }
-
-    private void entrySetInRangeHelper(Set<Entry<K, V>> set, TreeMapEntry current, K fromKey, boolean fromInclusive,
-            K toKey, boolean toInclusive) {
-
-        if (current != null) {
-            if (current.compareKey(fromKey) > 0) {
-                entrySetInRangeHelper(set, current.getLeft(), fromKey, fromInclusive, toKey, toInclusive);
-            }
-
-            boolean isFrom = current.compareKey(fromKey) == 0;
-            boolean isTo = current.compareKey(toKey) == 0;
-            if ((!isFrom || (isFrom && fromInclusive)) && (!isTo || (isTo && toInclusive))) {
-                set.add(current);
-            }
-
-            if (current.compareKey(toKey) < 0) {
-                entrySetInRangeHelper(set, current.getRight(), fromKey, fromInclusive, toKey, toInclusive);
-            }
-        }
-    }
-
-    /**
-     * Recursive helper method for entrySet().
-     * 
-     * @param set     the set to add entries to.
-     * @param current the current Entry to evaluate from.
-     */
-    private void entrySetHelper(Set<Entry<K, V>> set, TreeMapEntry current) {
-        if (current != null) {
-            entrySetHelper(set, current.getLeft());
-            set.add(current);
-            entrySetHelper(set, current.getRight());
-        }
     }
 
     /**
@@ -187,18 +127,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         return getParent(key).getChild(key) != null;
     }
 
-    // DELETE
-    public void printTree() {
-        printTree(root, "");
-    }
-
-    private void printTree(TreeMapEntry n, String spaces) {
-        if (n != null) {
-            printTree(n.getRight(), spaces + "    ");
-            printTree(n.getLeft(), spaces + "    ");
-        }
-    }
-
     /**
      * Returns true if this map maps one or more keys to the specified value.
      * 
@@ -209,31 +137,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public boolean containsValue(Object value) {
         return containsValueHelper(value, root);
-    }
-
-    /**
-     * Recursive helper method for containsVale()
-     * 
-     * @param value   the object to find
-     * @param current the root of the current sub-tree to check
-     * @return true if value is found in the relevant subtree
-     * 
-     * @exception ClassCastException if key is of an inappopriate type.
-     */
-    private boolean containsValueHelper(Object value, TreeMapEntry current) {
-        boolean ret = false;
-        if (current != null) {
-            ret |= containsValueHelper(value, current.getLeft());
-            if (ret) {
-                return true;
-            }
-            ret |= current.getValue() != null ? current.getValue().equals(value) : value == null;
-            if (ret) {
-                return true;
-            }
-            ret |= containsValueHelper(value, current.getRight());
-        }
-        return ret;
     }
 
     /**
@@ -252,41 +155,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         TreeMapEntry tmp_p = getParent(key);
         TreeMapEntry tmp = tmp_p.getChild(key);
         return tmp != null ? tmp.getValue() : null;
-    }
-
-    /**
-     * Overloaded helper function which finds the parent entry for a given key
-     * 
-     * @param o the object to reference
-     * @return the entry which represents the parent entry
-     * 
-     * @exception ClassCastException if key is of an inappropriate type.
-     */
-    @SuppressWarnings("unchecked")
-    private TreeMapEntry getParent(Object o) {
-        try {
-            return getParent((K) o);
-        } catch (ClassCastException e) {
-            throw new ClassCastException(o.toString() + "is not an appropriate key for this map.");
-        }
-
-    }
-
-    /**
-     * Overloaded helper function which finds the parent entry for a given key
-     * 
-     * @param o the object to reference
-     * @return the entry which represents the parent entry
-     */
-    private TreeMapEntry getParent(K key) {
-        TreeMapEntry tmp_p = null;
-        TreeMapEntry tmp = root;
-
-        while (tmp != null && (tmp.compareKey(key) != 0)) {
-            tmp_p = tmp;
-            tmp = tmp.compareKey(key) > 0 ? tmp.getLeft() : tmp.getRight();
-        }
-        return tmp_p;
     }
 
     /**
@@ -359,20 +227,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     }
 
     /**
-     * Helper method to remove and replace the root of the tree.
-     */
-    private void rootRemove() {
-        TreeMapEntry tmp = new TreeMapEntry(null, null);
-        tmp.setLeft(root);
-
-        tmp.remove(root);
-        root = tmp.getLeft();
-
-        tmp.setLeft(null);
-        tmp = null;
-    }
-
-    /**
      * Copies all of the mappings from the specified map to this map.
      * 
      * @param m the map to copy from
@@ -392,21 +246,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         size = 0;
     }
 
-    /**
-     * Recursive helper method for clear()
-     * 
-     * @param current the node to clear
-     */
-    private void clearHelper(TreeMapEntry current) {
-        if (current != null) {
-            clearHelper(current.getLeft());
-            clearHelper(current.getRight());
-
-            current.setLeft(null);
-            current.setRight(null);
-        }
-    }
-
     /*
      * The following methods are related to the NavigableMap<K, V> method
      */
@@ -419,68 +258,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public Map.Entry<K, V> ceilingEntry(K key) {
         return upEntry(key, true);
-    }
-
-    private Map.Entry<K, V> upEntry(K key, boolean inclusive) {
-        TreeMapEntry save = null;
-        TreeMapEntry tmp_p = null;
-        TreeMapEntry tmp = root;
-        while (tmp != null) {
-            if (tmp.compareKey(key) < 0) {
-                tmp_p = tmp;
-                tmp = tmp.getRight();
-            } else if (tmp.compareKey(key) > 0) {
-                save = tmp_p;
-                tmp_p = tmp;
-                tmp = tmp.getLeft();
-            } else {
-                if (inclusive) {
-                    return tmp;
-                }
-
-                if (!tmp.hasRight()) {
-                    return save;
-                }
-
-                tmp = tmp.getRight();
-                while (tmp.hasLeft()) {
-                    tmp = tmp.getLeft();
-                }
-                return tmp;
-            }
-        }
-        return tmp_p.compareKey(key) > 0 ? tmp_p : save;
-    }
-
-    private Map.Entry<K, V> downEntry(K key, boolean inclusive) {
-        TreeMapEntry save = null;
-        TreeMapEntry tmp_p = null;
-        TreeMapEntry tmp = root;
-        while (tmp != null) {
-            if (tmp.compareKey(key) > 0) {
-                tmp_p = tmp;
-                tmp = tmp.getLeft();
-            } else if (tmp.compareKey(key) < 0) {
-                save = tmp_p;
-                tmp_p = tmp;
-                tmp = tmp.getRight();
-            } else {
-                if (inclusive) {
-                    return tmp;
-                }
-
-                if (!tmp.hasLeft()) {
-                    return save;
-                }
-
-                tmp = tmp.getLeft();
-                while (tmp.hasRight()) {
-                    tmp = tmp.getRight();
-                }
-                return tmp;
-            }
-        }
-        return tmp_p.compareKey(key) < 0 ? tmp_p : save;
     }
 
     /**
@@ -531,23 +308,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     public Map.Entry<K, V> firstEntry() {
         TreeMapEntry tmp_p = firstParent();
         return tmp_p == null ? root : tmp_p.getLeft();
-    }
-
-    /**
-     * Helper method to find the parent of the first entry
-     * 
-     * @return the parent of the key-value mapping
-     */
-    private TreeMapEntry firstParent() {
-        TreeMapEntry tmp_p = null;
-        if (!isEmpty()) {
-            TreeMapEntry tmp = root;
-            while (tmp.hasLeft()) {
-                tmp_p = tmp;
-                tmp = tmp.getLeft();
-            }
-        }
-        return tmp_p;
     }
 
     /**
@@ -625,21 +385,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public Map.Entry<K, V> lastEntry() {
         return size() == 1 ? root : lastParent().getRight();
-    }
-
-    /**
-     * Helper method to find the parent of the last entry
-     * 
-     * @return the parent entry
-     */
-    private TreeMapEntry lastParent() {
-        TreeMapEntry tmp_p = null;
-        TreeMapEntry tmp = root;
-        while (tmp.hasRight()) {
-            tmp_p = tmp;
-            tmp = tmp.getRight();
-        }
-        return tmp_p;
     }
 
     /**
@@ -774,6 +519,314 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      */
     public NavigableMap<K, V> tailMap(K fromKey, boolean inclusive) {
         return subMap(fromKey, inclusive, lastEntry().getKey(), true);
+    }
+
+    /*
+     * Private helper methods
+     */
+
+    /**
+     * Recursive helper method for clear()
+     * 
+     * @param current the node to clear
+     */
+    private void clearHelper(TreeMapEntry current) {
+        if (current != null) {
+            clearHelper(current.getLeft());
+            clearHelper(current.getRight());
+
+            current.setLeft(null);
+            current.setRight(null);
+        }
+    }
+
+    /**
+     * Recursive helper method for containsVale()
+     * 
+     * @param value   the object to find
+     * @param current the root of the current sub-tree to check
+     * @return true if value is found in the relevant subtree
+     * 
+     * @exception ClassCastException if key is of an inappopriate type.
+     */
+    private boolean containsValueHelper(Object value, TreeMapEntry current) {
+        boolean ret = false;
+        if (current != null) {
+            ret |= containsValueHelper(value, current.getLeft());
+            if (ret) {
+                return true;
+            }
+            ret |= current.getValue() != null ? current.getValue().equals(value) : value == null;
+            if (ret) {
+                return true;
+            }
+            ret |= containsValueHelper(value, current.getRight());
+        }
+        return ret;
+    }
+
+    /**
+     * A helper method to find an entry with a key less than or equal to the
+     * parameter.
+     * 
+     * @param key       the key to reference
+     * @param inclusive whether the selected key can be the parameter
+     * @return an entry that is less than or equal to the parameter
+     */
+    private Map.Entry<K, V> downEntry(K key, boolean inclusive) {
+        TreeMapEntry save = null;
+        TreeMapEntry tmp_p = null;
+        TreeMapEntry tmp = root;
+        while (tmp != null) {
+            if (tmp.compareKey(key) > 0) {
+                tmp_p = tmp;
+                tmp = tmp.getLeft();
+            } else if (tmp.compareKey(key) < 0) {
+                save = tmp_p;
+                tmp_p = tmp;
+                tmp = tmp.getRight();
+            } else {
+                if (inclusive) {
+                    return tmp;
+                }
+
+                if (!tmp.hasLeft()) {
+                    return save;
+                }
+
+                tmp = tmp.getLeft();
+                while (tmp.hasRight()) {
+                    tmp = tmp.getRight();
+                }
+                return tmp;
+            }
+        }
+        return tmp_p.compareKey(key) < 0 ? tmp_p : save;
+    }
+
+    /**
+     * Recursive helper method for entrySet().
+     * 
+     * @param set     the set to add entries to.
+     * @param current the current Entry to evaluate from.
+     */
+    private void entrySetHelper(Set<Entry<K, V>> set, TreeMapEntry current) {
+        if (current != null) {
+            entrySetHelper(set, current.getLeft());
+            set.add(current);
+            entrySetHelper(set, current.getRight());
+        }
+    }
+
+    /**
+     * Method to help the SubTree inner class create an entrySet.
+     * Creates an entrySet within a specified range.
+     * 
+     * @param fromKey       the key from which to start
+     * @param fromInclusive whether or not to include fromKey in the subMap
+     * @param toKey         the key at which to end
+     * @param toInclusive   whether or not to include toKey in the subMap
+     * 
+     * @return the set of entries within a specified range
+     */
+    protected Set<Entry<K, V>> entrySetInRange(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+        Set<Entry<K, V>> ret = new TreeSet<>();
+        entrySetInRangeHelper(ret, root, fromKey, fromInclusive, toKey, toInclusive);
+        return ret;
+    }
+
+    /**
+     * Helper method to create a set of entries within a specified range
+     * @param set           the set to add entries to.
+     * @param current       the current Entry to evaluate from.
+     * @param fromKey       the key from which to start
+     * @param fromInclusive whether or not to include fromKey in the subMap
+     * @param toKey         the key at which to end
+     * @param toInclusive   whether or not to include toKey in the subMap
+     */
+    private void entrySetInRangeHelper(Set<Entry<K, V>> set, TreeMapEntry current, K fromKey, boolean fromInclusive,
+            K toKey, boolean toInclusive) {
+
+        if (current != null) {
+            if (current.compareKey(fromKey) > 0) {
+                entrySetInRangeHelper(set, current.getLeft(), fromKey, fromInclusive, toKey, toInclusive);
+            }
+
+            boolean isFrom = current.compareKey(fromKey) == 0;
+            boolean isTo = current.compareKey(toKey) == 0;
+            if ((!isFrom || (isFrom && fromInclusive)) && (!isTo || (isTo && toInclusive))) {
+                set.add(current);
+            }
+
+            if (current.compareKey(toKey) < 0) {
+                entrySetInRangeHelper(set, current.getRight(), fromKey, fromInclusive, toKey, toInclusive);
+            }
+        }
+
+    /**
+     * Helper method to find the parent of the first entry
+     * 
+     * @return the parent of the key-value mapping
+     */
+    private TreeMapEntry firstParent() {
+        TreeMapEntry tmp_p = null;
+        if (!isEmpty()) {
+            TreeMapEntry tmp = root;
+            while (tmp.hasLeft()) {
+                tmp_p = tmp;
+                tmp = tmp.getLeft();
+            }
+        }
+        return tmp_p;
+    }
+
+    /**
+     * Overloaded helper function which finds the parent entry for a given key
+     * 
+     * @param o the object to reference
+     * @return the entry which represents the parent entry
+     * 
+     * @exception ClassCastException if key is of an inappropriate type.
+     */
+    @SuppressWarnings("unchecked")
+    private TreeMapEntry getParent(Object o) {
+        try {
+            return getParent((K) o);
+        } catch (ClassCastException e) {
+            throw new ClassCastException(o.toString() + "is not an appropriate key for this map.");
+        }
+
+    }
+
+    /**
+     * Overloaded helper function which finds the parent entry for a given key
+     * 
+     * @param o the object to reference
+     * @return the entry which represents the parent entry
+     */
+    private TreeMapEntry getParent(K key) {
+        TreeMapEntry tmp_p = null;
+        TreeMapEntry tmp = root;
+
+        while (tmp != null && (tmp.compareKey(key) != 0)) {
+            tmp_p = tmp;
+            tmp = tmp.compareKey(key) > 0 ? tmp.getLeft() : tmp.getRight();
+        }
+        return tmp_p;
+    }
+
+    /**
+     * Recursive helper method for keySet().
+     * 
+     * @param set     the set to add keys to.
+     * @param current the current Entry to evaluate from.
+     */
+    private void keySetHelper(Set<K> set, TreeMapEntry current) {
+        if (current != null) {
+            keySetHelper(set, current.getLeft());
+            set.add(current.getKey());
+            keySetHelper(set, current.getRight());
+        }
+    }
+
+    /**
+     * Helper method to find the parent of the last entry
+     * 
+     * @return the parent entry
+     */
+    private TreeMapEntry lastParent() {
+        TreeMapEntry tmp_p = null;
+        TreeMapEntry tmp = root;
+        while (tmp.hasRight()) {
+            tmp_p = tmp;
+            tmp = tmp.getRight();
+        }
+        return tmp_p;
+    }
+
+    /**
+     * Prints out a visualization of the tree. Used for debugging purposes.
+     */
+    protected void printTree() {
+        printTree(root, "");
+    }
+
+    /**
+     * Recursive helper method to visualize a tree.
+     */
+    private void printTree(TreeMapEntry n, String spaces) {
+        if (n != null) {
+            printTree(n.getRight(), spaces + "    ");
+            System.out.println("(" + n.getKey() + ", " + n.getValue() + ")");
+            printTree(n.getLeft(), spaces + "    ");
+        }
+    }
+
+    /**
+     * Helper method to remove and replace the root of the tree.
+     */
+    private void rootRemove() {
+        TreeMapEntry tmp = new TreeMapEntry(null, null);
+        tmp.setLeft(root);
+
+        tmp.remove(root);
+        root = tmp.getLeft();
+
+        tmp.setLeft(null);
+        tmp = null;
+    }
+
+    /**
+     * A helper method to find an entry with a key greater than or equal to the
+     * parameter.
+     * 
+     * @param key       the key to reference
+     * @param inclusive whether the selected key can be the parameter
+     * @return an entry that is greater than or equal to the parameter
+     */
+    private Map.Entry<K, V> upEntry(K key, boolean inclusive) {
+        TreeMapEntry save = null;
+        TreeMapEntry tmp_p = null;
+        TreeMapEntry tmp = root;
+        while (tmp != null) {
+            if (tmp.compareKey(key) < 0) {
+                tmp_p = tmp;
+                tmp = tmp.getRight();
+            } else if (tmp.compareKey(key) > 0) {
+                save = tmp_p;
+                tmp_p = tmp;
+                tmp = tmp.getLeft();
+            } else {
+                if (inclusive) {
+                    return tmp;
+                }
+
+                if (!tmp.hasRight()) {
+                    return save;
+                }
+
+                tmp = tmp.getRight();
+                while (tmp.hasLeft()) {
+                    tmp = tmp.getLeft();
+                }
+                return tmp;
+            }
+        }
+        return tmp_p.compareKey(key) > 0 ? tmp_p : save;
+    }
+
+    /**
+     * Recursive helper method for values().
+     * 
+     * @param set     the collection to add values to.
+     * @param current the current Entry to evaluate from.
+     */
+    private void valuesHelper(Collection<V> set, TreeMapEntry current) {
+        if (current != null) {
+            valuesHelper(set, current.getLeft());
+            set.add(current.getValue());
+            valuesHelper(set, current.getRight());
+        }
     }
 
     /*
@@ -1059,6 +1112,16 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * Special view classes
      */
 
+    /**
+     * A private inner class that returns a returns a sub-view of the mappings
+     * contained in the outer class map.
+     * 
+     * Changes in the SubTreeMap will be reflected in the associated TreeMap and
+     * vice versa.
+     * 
+     * Generally wraps the methods from the outer class, but makes checks on the
+     * range in certain instances.
+     */
     private class SubTreeMap implements NavigableMap<K, V> {
         TreeMap<K, V> treeMap;
 
