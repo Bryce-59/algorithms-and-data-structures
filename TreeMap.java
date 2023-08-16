@@ -431,7 +431,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the reverse order view
      */
     public NavigableMap<K, V> descendingMap() {
-        return new DescendingTreeMap<>(this);
+        return new DescendingTreeMap(this);
     }
 
     /**
@@ -648,7 +648,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the sub-view of the map
      */
     public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-        return new SubTreeMap<K, V>(this, fromKey, fromInclusive, toKey, toInclusive);
+        // return new SubTreeMap(this, fromKey, fromInclusive, toKey, toInclusive);
+        return this;
     }
 
     /**
@@ -970,7 +971,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * Special view classes
      */
 
-    private class SubTreeMap<K extends Comparable<K>, V extends Comparable<V>> implements NavigableMap<K, V> {
+    private class SubTreeMap implements NavigableMap<K, V> {
         TreeMap<K, V> treeMap;
 
         K fromKey;
@@ -1201,7 +1202,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         @Override
         public NavigableMap<K, V> descendingMap() {
-            return new DescendingTreeMap<K, V>(this);
+            return new DescendingTreeMap(this);
         }
 
         @Override
@@ -1254,11 +1255,17 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
     }
 
-    /*
-     * Private inner classes
+    /**
+     * A private inner class that returns a returns a reverse order view of the
+     * mappings contained in the outer class map.
+     * 
+     * Changes in the DescendingTreeMap will be reflected in the associated
+     * NavigableMap and vice versa.
+     * 
+     * Generally wraps the methods from the outer class, but reverses their calls in
+     * certain instances.
      */
-
-    private class DescendingTreeMap<K extends Comparable<K>, V extends Comparable<V>> implements NavigableMap<K, V> {
+    private class DescendingTreeMap implements NavigableMap<K, V> {
         NavigableMap<K, V> treeMap;
 
         public DescendingTreeMap(NavigableMap<K, V> treeMap) {
@@ -1287,14 +1294,16 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         @Override
         public Collection<V> values() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'values'");
+            ArrayList<V> ret = new ArrayList<V>(treeMap.values());
+            Collections.reverse(ret);
+            return ret;
         }
 
         @Override
         public Set<Entry<K, V>> entrySet() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'entrySet'");
+            ArrayList<Entry<K, V>> ret = new ArrayList<Entry<K, V>>(treeMap.entrySet());
+            Collections.reverse(ret);
+            return new TreeSet<Entry<K, V>>(ret);
         }
 
         @Override
@@ -1419,8 +1428,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         @Override
         public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'subMap'");
+            return new DescendingTreeMap(treeMap.subMap(fromKey, fromInclusive, toKey, toInclusive));
         }
 
         @Override
