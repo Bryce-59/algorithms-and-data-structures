@@ -2,8 +2,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
@@ -12,6 +10,13 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeSet;
 
+/**
+ * A navigable map implemented as a Red-Black Tree.
+ * 
+ * Documentation is largely taken from the documentation for the
+ * NavigableMap<E> interface.
+ * https://docs.oracle.com/javase/8/docs/api/java/util/NavigableMap.html
+ */
 public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implements NavigableMap<K, V> {
     TreeMapEntry root;
     int size = 0;
@@ -192,8 +197,11 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         return ret;
     }
 
-    // TODO
+    /**
+     * Re-balances the TreeMap according to the rules of a red-black tree.
+     */
     private void rebalance() {
+        // TODO
     }
 
     /**
@@ -700,7 +708,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     }
 
     /**
-     * Overloaded helper function which finds the parent entry for a given key
+     * Helper function which finds the parent entry for a given key
      * 
      * @param o the object to reference
      * @return the entry which represents the parent entry
@@ -1057,7 +1065,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                         setRight(null);
                     }
                 }
-                size--;
             }
         }
 

@@ -504,6 +504,10 @@ public class LinkedList<E> implements List<E>, Deque<E> {
      */
     @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
+        if (a == null) {
+            throw new NullPointerException("Array should not be null");
+        }
+
         T[] ret = a;
         if (a.length < size()) {
             ret = (T[]) Arrays.copyOf(a, size, a.getClass());

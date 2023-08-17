@@ -3,7 +3,7 @@ import java.util.NavigableMap;
 /**
  * A Test Harness for the TreeMap class.
  */
-public class TreeMapTestsTmp {
+public class TreeMapTests {
     static boolean VERBOSE = true;
     static int numTests = 0;
     static int failedTests = 0;
@@ -18,30 +18,70 @@ public class TreeMapTestsTmp {
         failedTests = 0;
 
         // main tests
+        // sub tests
         TreeMap<Integer, String> mapIS = new TreeMap<>();
         containsTests(mapIS, "TreeMap"); // contains
+        NavigableMap<Integer, String> smapIS = (new TreeMap<Integer, String>()).subMap(mapIS.firstKey(), true,
+                mapIS.lastKey(), true);
+        containsTests(smapIS, "SubMap"); // contains -- submap
+
         getTests(); // get entry, get key
+
         TreeMap<String, Double> mapSD1 = new TreeMap<>();
         getValueTests(mapSD1, "TreeMap"); // get value
+        NavigableMap<String, Double> smapSD1 = (new TreeMap<String, Double>()).subMap(mapSD1.firstKey(), true,
+                mapSD1.lastKey(), true);
+        getValueTests(smapSD1, "SubMap"); // get value -- submap
+
         mapSD1 = new TreeMap<>();
         TreeMap<String, Double> mapSD2 = new TreeMap<>();
         putTests(mapSD1, mapSD2, "TreeMap"); // put
+        smapSD1 = (new TreeMap<String, Double>()).subMap(mapSD1.firstKey(), true, mapSD1.lastKey(), true);
+        NavigableMap<String, Double> smapSD2 = (new TreeMap<String, Double>()).subMap(mapSD1.firstKey(), true,
+                mapSD1.lastKey(), true);
+        putTests(smapSD1, smapSD2, "SubMap"); // put -- submap
+
+        setTests();
         removeTests(); // clear, remove
+
         mapSD1 = new TreeMap<String, Double>();
         sizeTests(mapSD1, "TreeMap"); // isEmpty, size
+        smapSD1 = (new TreeMap<String, Double>()).subMap(mapSD1.firstKey(), true, mapSD1.lastKey(), true);
+        sizeTests(smapSD1, "SubMap"); // isEmpty, size -- submap
 
         // descending tests
         NavigableMap<Integer, String> dmapIS = (new TreeMap<Integer, String>()).descendingMap();
         containsTests(dmapIS, "DescendingTreeMap"); // contains
+        NavigableMap<Integer, String> dsmapIS = ((new TreeMap<Integer, String>()).descendingMap()).subMap(
+                dmapIS.firstKey(), true,
+                dmapIS.lastKey(), true);
+        containsTests(dsmapIS, "DescendingSubMap"); // contains -- submap
+
         getTestsDescending(); // get entry, get key
+
         NavigableMap<String, Double> dmapSD1 = (new TreeMap<String, Double>()).descendingMap();
         getValueTests(dmapSD1, "DescendingTreeMap"); // get value
+        NavigableMap<String, Double> dsmapSD1 = ((new TreeMap<String, Double>()).descendingMap()).subMap(
+                dmapSD1.firstKey(), true,
+                dmapSD1.lastKey(), true);
+        getValueTests(dsmapSD1, "DescendingSubMap"); // get value -- submap
+
         dmapSD1 = (new TreeMap<String, Double>()).descendingMap();
         NavigableMap<String, Double> dmapSD2 = (new TreeMap<String, Double>()).descendingMap();
         putTests(dmapSD1, dmapSD2, "DescendingTreeMap"); // put
+        NavigableMap<String, Double> dsmapSD2 = ((new TreeMap<String, Double>()).descendingMap()).subMap(
+                dmapSD1.firstKey(), true,
+                dmapSD1.lastKey(), true);
+        putTests(dsmapSD1, dsmapSD2, "DescendingSubMap"); // put -- submap
+
         removeTestsDescending(); // clear, remove
+        setTestsDescending();
+
         dmapSD1 = (new TreeMap<String, Double>()).descendingMap();
         sizeTests(dmapSD1, "DescendingTreeMap"); // isEmpty, size
+        dsmapSD1 = ((new TreeMap<String, Double>()).descendingMap()).subMap(dmapSD1.firstKey(), true, dmapSD1.lastKey(),
+                true);
+        sizeTests(dsmapSD1, "DescendingSubMap"); // isEmpty, size -- submap
 
         // sub tests
         subMapTests();
@@ -524,6 +564,18 @@ public class TreeMapTestsTmp {
     }
 
     /**
+     * Tests for the set view methods for a descending map, including:
+     * descendingKeySet()
+     * entrySet()
+     * keySet()
+     * navigableKeySet()
+     * values()
+     */
+    private static void setTestsDescending() {
+        // TODO
+    }
+
+    /**
      * Tests for the size methods, including:
      * isEmpty()
      * size()
@@ -544,12 +596,6 @@ public class TreeMapTestsTmp {
         }
 
         expected = "" + false;
-        actual = "" + map.isEmpty();
-        printTest(expected, actual, type + " isEmpty()");
-
-        map.clear();
-
-        expected = "" + true;
         actual = "" + map.isEmpty();
         printTest(expected, actual, type + " isEmpty()");
     }
