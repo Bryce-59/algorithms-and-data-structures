@@ -3,10 +3,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 import java.util.SortedSet;
 
+/**
+ * A navigable set implemented as a Red-Black Tree.
+ * 
+ * Documentation is largely taken from the documentation for the
+ * NavigableSet<E>, Set<E>, and Iterator<E> interfaces.
+ * https://docs.oracle.com/javase/8/docs/api/java/util/NavigableSet.html
+ * https://docs.oracle.com/javase/8/docs/api/java/util/Set.html
+ * https://docs.oracle.com/javase/8/docs/api/java/util/Iterator.html
+ */
 public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements NavigableSet<E> {
     TreeSetEntry root;
     int size = 0;
@@ -28,6 +38,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         if (size() == 0) {
             root = new TreeSetEntry(e);
             size++;
+            rebalance(add);
             return true;
         }
 
@@ -44,8 +55,107 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             tmp_p.setRight(add);
         }
         size++;
-        rebalance();
+        rebalance(add);
         return true;
+    }
+
+    private void rebalanceInsert(E e) {
+        if (!isEmpty()) {
+            if (root.compare(e) == 0) {
+                root.setBlack();
+            } else {
+                TreeSetEntry tmp_g = null;
+                TreeSetEntry tmp_p = null;
+                TreeSetEntry tmp_u = null;
+                TreeSetEntry tmp_c = root;
+                TreeSetEntry tmp_s = null;
+
+                // find the child
+                while (!(tmp_c.compare(e) == 0)) {
+                    tmp_g = tmp_p;
+                    tmp_p = tmp_c;
+                    tmp_u = tmp_s;
+                    if (tmp_c.compare(e) < 0) {
+                        tmp_c = tmp_c.getLeft();
+                        tmp_s = tmp_c.getRight();
+                    } else {
+                        tmp_c = tmp_c.getRight();
+                        tmp_s = tmp_c.getLeft();
+                    }
+                }
+
+                // red parent -- must be refactored
+                if (tmp_p.isRed()) {
+                    // red uncle -- simple recolor
+                    if (tmp_u.isRed()) {
+                        tmp_p.setBlack();
+                        tmp_u.setBlack();
+                        tmp_g.setRed();
+                        rebalance(tmp_g.getData());
+                    }
+                    // black uncle -- requires rotation
+                    else {
+                        if (tmp_p.compare(tmp_g.getData()) < 0) {
+                            // Left Left
+                            if (tmp_p.compare(e) > 0) {
+                                tmp_g.llr();
+                                tmp_g.swapColor(tmp_p);
+                            }
+                            // Left Right
+                            else {
+                                tmp_g.lrr();
+                                tmp_g.swapColor(tmp_c);
+                            }
+                        } else {
+                            // Right Left
+                            if (tmp_p.compare(e) > 0) {
+                                tmp_g.rlr();
+                                tmp_g.swapColor(tmp_c);
+                            }
+                            // Right Right
+                            else {
+                                tmp_g.rrr();
+                                tmp_g.swapColor(tmp_p);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void rebalanceDelete(E e, boolean isRed) {
+        if (!isEmpty()) {
+            if (root.compare(e) == 0) {
+                root.setBlack();
+            } else {
+                TreeSetEntry tmp_g = null;
+                TreeSetEntry tmp_p = null;
+                TreeSetEntry tmp_u = null;
+                TreeSetEntry tmp_c = root;
+                TreeSetEntry tmp_s = null;
+
+                // find the child
+                while (!(tmp_c.compare(e) == 0)) {
+                    tmp_g = tmp_p;
+                    tmp_p = tmp_c;
+                    tmp_u = tmp_s;
+                    if (tmp_c.compare(e) < 0) {
+                        tmp_c = tmp_c.getLeft();
+                        tmp_s = tmp_c.getRight();
+                    } else {
+                        tmp_c = tmp_c.getRight();
+                        tmp_s = tmp_c.getLeft();
+                    }
+                }
+
+                tmp_c.setBlack();
+                if (!isRed) {
+
+                }
+
+
+
     }
 
     /**
@@ -309,7 +419,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the greatest element less than the given element
      */
     public E lower(E e) {
-        return downElement(e, false).getData();
+        return downEntry(e, false).getData();
     }
 
     /**
@@ -320,7 +430,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the least element greater than the given element
      */
     public E higher(E e) {
-        return upElement(e, false).getData();
+        return upEntry(e, false).getData();
     }
 
     /**
@@ -331,7 +441,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the greatest element less than or equal to the given element
      */
     public E floor(E e) {
-        return downElement(e, true).getData();
+        return downEntry(e, true).getData();
     }
 
     /**
@@ -342,19 +452,17 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the least element greater than or equal to the given element
      */
     public E ceiling(E e) {
-        return upElement(e, true).getData();
+        return upEntry(e, true).getData();
     }
 
     @Override
     public Iterator<E> iterator() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'iterator'");
+        return new TreeSetIterator();
     }
 
     @Override
     public NavigableSet<E> descendingSet() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'descendingSet'");
+        return new DescendingTreeSet(this);
     }
 
     @Override
@@ -407,8 +515,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return a sub-view of the set
      */
     public NavigableSet<E> subSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'subSet'");
+        return new SubTreeSet(fromElement, fromInclusive, toElement, toInclusive);
     }
 
     /**
@@ -512,7 +619,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @param inclusive whether the selected key can be the parameter
      * @return an entry that is less than or equal to the parameter
      */
-    private TreeSetEntry downElement(E data, boolean inclusive) {
+    private TreeSetEntry downEntry(E data, boolean inclusive) {
         TreeSetEntry save = null;
         TreeSetEntry tmp_p = null;
         TreeSetEntry tmp = root;
@@ -593,13 +700,6 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
     }
 
     /**
-     * Helper method to enforce red-black tree properties.
-     */
-    private void rebalance() {
-        // TODO
-    }
-
-    /**
      * Helper method to remove and replace the root of the tree.
      */
     private void rootRemove() {
@@ -621,7 +721,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @param inclusive whether the selected key can be the parameter
      * @return an entry that is greater than or equal to the parameter
      */
-    private TreeSetEntry upElement(E key, boolean inclusive) {
+    private TreeSetEntry upEntry(E key, boolean inclusive) {
         TreeSetEntry save = null;
         TreeSetEntry tmp_p = null;
         TreeSetEntry tmp = root;
@@ -656,12 +756,14 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         E data;
         TreeSetEntry left;
         TreeSetEntry right;
+        boolean color;
 
         /**
          * @param data
          */
         public TreeSetEntry(E data) {
             this.data = data;
+            color = false;
         }
 
         /**
@@ -835,5 +937,629 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
 
             return getData().compareTo(k);
         }
+    }
+
+    private class TreeSetIterator implements Iterator<E> {
+        E next;
+        E toRemove;
+
+        boolean lastElement;
+        boolean noRemove;
+
+        public TreeSetIterator() {
+            next = first();
+            lastElement = false;
+            noRemove = true;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return lastElement;
+        }
+
+        @Override
+        public E next() {
+            if (!hasNext()) {
+                throw new IllegalStateException("No next exists.");
+            }
+            if (next == null ? last() == null : next.equals(last())) {
+                lastElement = true;
+            }
+            toRemove = next;
+            noRemove = false;
+            next = higher(next);
+            return toRemove;
+        }
+
+        @Override
+        public void remove() {
+            if (noRemove) {
+                throw new IllegalStateException("Cannot remove at this time.");
+            }
+            TreeSet.this.remove(toRemove);
+            noRemove = true;
+        }
+    }
+
+    private class DescendingTreeSet implements NavigableSet<E> {
+        NavigableSet<E> treeSet;
+
+        public DescendingTreeSet(NavigableSet<E> set) {
+            treeSet = set;
+        }
+
+        @Override
+        public Comparator<? super E> comparator() {
+            return treeSet.comparator().reversed();
+        }
+
+        @Override
+        public E first() {
+            return treeSet.last();
+        }
+
+        @Override
+        public E last() {
+            return treeSet.first();
+        }
+
+        @Override
+        public int size() {
+            return treeSet.size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return treeSet.isEmpty();
+        }
+
+        @Override
+        public boolean contains(Object o) {
+            return treeSet.contains(o);
+        }
+
+        @Override
+        public Object[] toArray() {
+            Object[] ret = new Object[size()];
+
+            int i = 0;
+            Iterator<E> it = iterator();
+            while (it.hasNext()) {
+                ret[i++] = it.next();
+            }
+            return ret;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T[] toArray(T[] a) {
+            if (a == null) {
+                throw new NullPointerException("Array should not be null");
+            }
+
+            T[] ret = a;
+            if (a.length < size()) {
+                ret = (T[]) Arrays.copyOf(a, size, a.getClass());
+            }
+
+            int i = 0;
+            Iterator<E> it = iterator();
+            try {
+                while (i < size() && it.hasNext()) {
+                    ret[i++] = (T) it.next();
+                }
+            } catch (ClassCastException e) {
+                throw new ArrayStoreException("T is not a supertype of E");
+            }
+            if (a.length > size()) {
+                ret[size()] = null;
+            }
+            return ret;
+        }
+
+        @Override
+        public boolean add(E e) {
+            return treeSet.add(e);
+        }
+
+        @Override
+        public boolean remove(Object o) {
+            return treeSet.remove(o);
+        }
+
+        @Override
+        public boolean containsAll(Collection<?> c) {
+            return treeSet.containsAll(c);
+        }
+
+        @Override
+        public boolean addAll(Collection<? extends E> c) {
+            return treeSet.addAll(c);
+        }
+
+        @Override
+        public boolean retainAll(Collection<?> c) {
+            return treeSet.retainAll(c);
+        }
+
+        @Override
+        public boolean removeAll(Collection<?> c) {
+            return treeSet.removeAll(c);
+        }
+
+        @Override
+        public void clear() {
+            treeSet.clear();
+        }
+
+        @Override
+        public E lower(E e) {
+            return treeSet.higher(e);
+        }
+
+        @Override
+        public E floor(E e) {
+            return treeSet.ceiling(e);
+        }
+
+        @Override
+        public E ceiling(E e) {
+            return treeSet.floor(e);
+        }
+
+        @Override
+        public E higher(E e) {
+            return treeSet.lower(e);
+        }
+
+        @Override
+        public E pollFirst() {
+            return treeSet.pollLast();
+        }
+
+        @Override
+        public E pollLast() {
+            return treeSet.pollFirst();
+        }
+
+        @Override
+        public Iterator<E> iterator() {
+            return new DescendingTreeSetIterator();
+        }
+
+        @Override
+        public NavigableSet<E> descendingSet() {
+            return treeSet;
+        }
+
+        @Override
+        public Iterator<E> descendingIterator() {
+            return treeSet.iterator();
+        }
+
+        @Override
+        public NavigableSet<E> subSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
+            return new DescendingTreeSet(treeSet.subSet(fromElement, fromInclusive, toElement, toInclusive));
+        }
+
+        @Override
+        public NavigableSet<E> headSet(E toElement, boolean inclusive) {
+            return subSet(first(), true, toElement, inclusive);
+        }
+
+        @Override
+        public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
+            return subSet(fromElement, inclusive, last(), true);
+        }
+
+        @Override
+        public SortedSet<E> subSet(E fromElement, E toElement) {
+            return subSet(fromElement, true, toElement, false);
+        }
+
+        @Override
+        public SortedSet<E> headSet(E toElement) {
+            return headSet(toElement, false);
+        }
+
+        @Override
+        public SortedSet<E> tailSet(E fromElement) {
+            return tailSet(fromElement, true);
+        }
+
+        private class DescendingTreeSetIterator implements Iterator<E> {
+            E next;
+            E toRemove;
+
+            boolean lastElement;
+            boolean noRemove;
+
+            public DescendingTreeSetIterator() {
+                next = first();
+                lastElement = false;
+                noRemove = true;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return lastElement;
+            }
+
+            @Override
+            public E next() {
+                if (!hasNext()) {
+                    throw new IllegalStateException("No next exists.");
+                }
+                if (next == null ? last() == null : next.equals(last())) {
+                    lastElement = true;
+                }
+                toRemove = next;
+                noRemove = false;
+                next = higher(next);
+                return toRemove;
+            }
+
+            @Override
+            public void remove() {
+                if (noRemove) {
+                    throw new IllegalStateException("Cannot remove at this time.");
+                }
+                DescendingTreeSet.this.remove(toRemove);
+                noRemove = true;
+            }
+        }
+    }
+
+    public class SubTreeSet implements NavigableSet<E> {
+        TreeSet<E> treeSet;
+
+        E fromElement;
+        boolean fromInclusive;
+        E toElement;
+        boolean toInclusive;s
+
+        public SubTreeSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
+            this.fromElement = fromElement;
+            this.fromInclusive = fromInclusive;
+            this.toElement = toElement;
+            this.toInclusive = toInclusive;
+        }
+
+        private boolean inBounds(Object o) {
+            E e = (E) o;
+
+            if (fromInclusive ? compare(e, fromElement) < 0 : compare(e, fromElement) <= 0) {
+                return false;
+            } else if (toInclusive ? compare(toElement, e) <= 0 : compare(toElement, e) < 0) {
+                return false;
+            }
+            return true;
+        }
+
+        private int compare(E lhs, E rhs) {
+            if (lhs == null && rhs == null) {
+                return 0;
+            }
+            if (comparator() != null) {
+                return comparator().compare(lhs, rhs);
+            }
+            return lhs.compareTo(rhs);
+        }
+
+        @Override
+        public Comparator<? super E> comparator() {
+            return treeSet.comparator();
+        }
+
+        @Override
+        public E first() {
+            return fromInclusive ? treeSet.ceiling(fromElement) : treeSet.higher(fromElement);
+        }
+
+        @Override
+        public E last() {
+            return toInclusive ? treeSet.floor(toElement) : treeSet.lower(toElement);
+        }
+
+        @Override
+        public int size() {
+            Iterator<E> it = iterator();
+            int ret = 0;
+            while (it.hasNext()) {
+                ret++;
+            }
+            return ret;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return size() == 0;
+        }
+
+        @Override
+        public boolean contains(Object o) {
+            if (!inBounds(o)) {
+                return false;
+            }
+            return treeSet.contains(o);
+        }
+
+        @Override
+        public Object[] toArray() {
+            Object[] ret = new Object[size()];
+
+            int i = 0;
+            Iterator<E> it = iterator();
+            while (it.hasNext()) {
+                ret[i++] = it.next();
+            }
+            return ret;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T[] toArray(T[] a) {
+            if (a == null) {
+                throw new NullPointerException("Array should not be null");
+            }
+
+            T[] ret = a;
+            if (a.length < size()) {
+                ret = (T[]) Arrays.copyOf(a, size, a.getClass());
+            }
+
+            int i = 0;
+            Iterator<E> it = iterator();
+            try {
+                while (i < size() && it.hasNext()) {
+                    ret[i++] = (T) it.next();
+                }
+            } catch (ClassCastException e) {
+                throw new ArrayStoreException("T is not a supertype of E");
+            }
+            if (a.length > size()) {
+                ret[size()] = null;
+            }
+            return ret;
+        }
+
+        @Override
+        public boolean add(E e) {
+            if (!inBounds(e)) {
+                throw new IllegalArgumentException("Out-of-bounds element: " + e);
+            }
+
+            return treeSet.add(e);
+        }
+
+        @Override
+        public boolean remove(Object o) {
+            if (!inBounds(o)) {
+                return false;
+            }
+
+            E e = (E) o;
+
+            return treeSet.add(e);
+        }
+
+        @Override
+        public boolean containsAll(Collection<?> c) {
+            if (c == null) {
+                throw new NullPointerException("Collection cannot be null");
+            }
+
+            boolean ret = true;
+            for (Object e : c) {
+                ret &= contains(e);
+            }
+            return ret;
+        }
+
+        @Override
+        public boolean addAll(Collection<? extends E> c) {
+            if (c == null) {
+                throw new NullPointerException("Collection cannot be null");
+            }
+
+            boolean ret = false;
+            for (E e : c) {
+                ret |= add(e);
+            }
+            return ret;
+        }
+
+        @Override
+        public boolean retainAll(Collection<?> c) {
+            if (c == null) {
+                throw new NullPointerException("Collection cannot be null.");
+            }
+
+            Iterator<E> it = iterator();
+            boolean ret = false;
+            while (it.hasNext()) {
+                if (!c.contains(it.next())) {
+                    it.remove();
+                    ret = true;
+                }
+            }
+            return ret;
+        }
+
+        @Override
+        public boolean removeAll(Collection<?> c) {
+            if (c == null) {
+                throw new NullPointerException("Collection cannot be null.");
+            }
+
+            boolean ret = false;
+            for (Object o : c) {
+                ret |= remove(o);
+            }
+            return ret;
+        }
+
+        @Override
+        public void clear() {
+            Iterator<E> it = iterator();
+            while (it.hasNext()) {
+                it.next();
+                it.remove();
+            }
+        }
+
+        @Override
+        public E lower(E e) {
+            if (!inBounds(e)) {
+                if (compare(toElement, e) <= 0) {
+                    return last();
+                } else {
+                    return null;
+                }
+            }
+            return treeSet.floor(e);
+        }
+
+        @Override
+        public E floor(E e) {
+            if (!inBounds(e)) {
+                if (compare(toElement, e) < 0) {
+                    return last();
+                } else {
+                    return null;
+                }
+            }
+            return treeSet.floor(e);
+        }
+
+        @Override
+        public E ceiling(E e) {
+            if (!inBounds(e)) {
+                if (compare(e, fromElement) <= 0) {
+                    return first();
+                } else {
+                    return null;
+                }
+            }
+            return treeSet.ceiling(e);
+        }
+
+        @Override
+        public E higher(E e) {
+            if (!inBounds(e)) {
+                if (compare(e, fromElement) < 0) {
+                    return first();
+                } else {
+                    return null;
+                }
+            }
+            return treeSet.ceiling(e);
+        }
+
+        @Override
+        public E pollFirst() {
+            E ret = first();
+            remove(ret);
+            return ret;
+        }
+
+        @Override
+        public E pollLast() {
+            E ret = last();
+            remove(ret);
+            return ret;
+        }
+
+        @Override
+        public Iterator<E> iterator() {
+            return new SubTreeSetIterator();
+        }
+
+        @Override
+        public NavigableSet<E> descendingSet() {
+            return new DescendingTreeSet(this);
+        }
+
+        @Override
+        public Iterator<E> descendingIterator() {
+            return descendingSet().iterator();
+        }
+
+        @Override
+        public NavigableSet<E> subSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
+            if (!inBounds(fromElement) || !inBounds(toElement)) {
+                throw new IllegalArgumentException("Out-of-bounds range");
+            }
+
+            return treeSet.subSet(fromElement, fromInclusive, toElement, toInclusive);
+        }
+
+        @Override
+        public NavigableSet<E> headSet(E toElement, boolean inclusive) {
+            return subSet(first(), true, toElement, inclusive);
+        }
+
+        @Override
+        public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
+            return subSet(fromElement, inclusive, last(), true);
+        }
+
+        @Override
+        public SortedSet<E> subSet(E fromElement, E toElement) {
+            return subSet(fromElement, true, toElement, false);
+        }
+
+        @Override
+        public SortedSet<E> headSet(E toElement) {
+            return headSet(toElement, false);
+        }
+
+        @Override
+        public SortedSet<E> tailSet(E fromElement) {
+            return tailSet(fromElement, true);
+        }
+
+        private class SubTreeSetIterator implements Iterator<E> {
+            E next;
+            E toRemove;
+
+            boolean lastElement;
+            boolean noRemove;
+
+            public SubTreeSetIterator() {
+                next = first();
+                lastElement = false;
+                noRemove = true;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return lastElement;
+            }
+
+            @Override
+            public E next() {
+                if (!hasNext()) {
+                    throw new IllegalStateException("No next exists.");
+                }
+                if (next == null ? last() == null : next.equals(last())) {
+                    lastElement = true;
+                }
+                toRemove = next;
+                noRemove = false;
+                next = higher(next);
+                return toRemove;
+            }
+
+            @Override
+            public void remove() {
+                if (noRemove) {
+                    throw new IllegalStateException("Cannot remove at this time.");
+                }
+                SubTreeSet.this.remove(toRemove);
+                noRemove = true;
+            }
+        }
+
     }
 }

@@ -83,6 +83,8 @@ public class TreeMapTests {
                 true);
         sizeTests(dsmapSD1, "DescendingSubMap"); // isEmpty, size -- submap
 
+        // comparator tests
+        // null tests
         // sub tests
         subMapTests();
 

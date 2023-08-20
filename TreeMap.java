@@ -174,6 +174,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         V ret = null;
         if (size() == 0) {
             root = new TreeMapEntry(key, value);
+            root.setBlack();
             size++;
             return ret;
         }
@@ -191,17 +192,9 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 tmp_p.setRight(add);
             }
             size++;
+            rebalanceInsert(key);
         }
-
-        rebalance();
         return ret;
-    }
-
-    /**
-     * Re-balances the TreeMap according to the rules of a red-black tree.
-     */
-    private void rebalance() {
-        // TODO
     }
 
     /**
@@ -228,7 +221,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             }
             tmp_p.remove(tmp);
         }
-        rebalance();
+        // rebalance();
         size--;
         return ret;
     }
@@ -447,7 +440,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             node.remove(ret);
         }
         size--;
-        rebalance();
+        // rebalance();
         return ret;
     }
 
@@ -472,7 +465,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             node.remove(ret);
         }
         size--;
-        rebalance();
+        // rebalance();
         return ret;
     }
 
@@ -488,8 +481,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return the sub-view of the map
      */
     public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-        // return new SubTreeMap(this, fromKey, fromInclusive, toKey, toInclusive);
-        return this;
+        return new SubTreeMap(this, fromKey, fromInclusive, toKey, toInclusive);
     }
 
     /**
@@ -589,7 +581,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 tmp_p = tmp;
                 tmp = tmp.getLeft();
             } else if (tmp.compareKey(key) < 0) {
-                save = tmp_p;
+                save = tmp_p == null ? root : tmp_p;
                 tmp_p = tmp;
                 tmp = tmp.getRight();
             } else {
@@ -772,6 +764,219 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     }
 
     /**
+     * Re-balances the TreeMap after insertion according to the rules of a red-black
+     * tree.
+     * 
+     * @param key the key that was just inserted
+     */
+    private void rebalanceInsert(K key) {
+        if (!isEmpty()) {
+            if (root.compareKey(key) == 0) {
+                root.setBlack();
+            } else {
+                TreeMapEntry tmp_gg = null;
+                TreeMapEntry tmp_g = null;
+                TreeMapEntry tmp_p = null;
+                TreeMapEntry tmp_u = null;
+                TreeMapEntry tmp_c = root;
+                TreeMapEntry tmp_s = null;
+
+                // find the child
+                while (!(tmp_c.compareKey(key) == 0)) {
+                    tmp_gg = tmp_g;
+                    tmp_g = tmp_p;
+                    tmp_p = tmp_c;
+                    tmp_u = tmp_s;
+                    if (tmp_c.compareKey(key) > 0) {
+                        tmp_s = tmp_c.getRight();
+                        tmp_c = tmp_c.getLeft();
+                    } else {
+                        tmp_s = tmp_c.getLeft();
+                        tmp_c = tmp_c.getRight();
+                    }
+                }
+
+                // red parent -- must be refactored
+                if (tmp_p.isRed()) {
+                    // red uncle -- simple recolor
+                    if (tmp_u != null && tmp_u.isRed()) {
+                        tmp_p.setBlack();
+                        tmp_u.setBlack();
+                        tmp_g.setRed();
+                        rebalanceInsert(tmp_g.getKey());
+                    }
+                    // black uncle -- requires rotation
+                    else {
+                        if (tmp_p.compareKey(tmp_g.getKey()) < 0) {
+                            // Left Left
+                            if (tmp_p.compareKey(key) > 0) {
+                                rotLL(tmp_gg, tmp_g);
+                                tmp_g.swapColor(tmp_p);
+                            }
+                            // Left Right
+                            else {
+                                rotLR(tmp_gg, tmp_g);
+                                tmp_g.swapColor(tmp_c);
+                            }
+                        } else {
+                            // Right Left
+                            if (tmp_p.compareKey(key) > 0) {
+                                rotRL(tmp_gg, tmp_g);
+                                tmp_g.swapColor(tmp_c);
+                            }
+                            // Right Right
+                            else {
+                                rotRR(tmp_gg, tmp_g);
+                                tmp_g.swapColor(tmp_p);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Re-balances the TreeMap after removal according to the rules of a red-black
+     * tree.
+     * 
+     * @param key the key that was just inserted
+     */
+    private void rebalanceRemove(K key, boolean wasRed) {
+        if (root.compareKey(key) == 0) {
+            root.setBlack();
+        } else {
+            TreeMapEntry tmp_gg = null;
+            TreeMapEntry tmp_g = null;
+            TreeMapEntry tmp_p = null;
+            TreeMapEntry tmp_u = null;
+            TreeMapEntry tmp_c = root;
+            TreeMapEntry tmp_s = null;
+
+            // find the child
+            while (!(tmp_c.compareKey(key) == 0)) {
+                tmp_gg = tmp_g;
+                tmp_g = tmp_p;
+                tmp_p = tmp_c;
+                tmp_u = tmp_s;
+                if (tmp_c.compareKey(key) < 0) {
+                    tmp_c = tmp_c.getLeft();
+                    tmp_s = tmp_c.getRight();
+                } else {
+                    tmp_c = tmp_c.getRight();
+                    tmp_s = tmp_c.getLeft();
+                }
+            }
+
+            if (wasRed || tmp_c.isRed()) {
+                tmp_c.setBlack();
+            } else {
+
+            }
+        }
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles left-left rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotLL(TreeMapEntry parent, TreeMapEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeMapEntry tmp = new TreeMapEntry(null, null);
+            tmp.setLeft(root);
+            tmp.rotLL(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotLL(pivot);
+        }
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles left-right rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotLR(TreeMapEntry parent, TreeMapEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeMapEntry tmp = new TreeMapEntry(null, null);
+            tmp.setLeft(root);
+            tmp.rotLR(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotLR(pivot);
+        }
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles right-left rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotRL(TreeMapEntry parent, TreeMapEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeMapEntry tmp = new TreeMapEntry(null, null);
+            tmp.setLeft(root);
+            tmp.rotRL(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotRL(pivot);
+        }
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles right-right rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotRR(TreeMapEntry parent, TreeMapEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeMapEntry tmp = new TreeMapEntry(null, null);
+            tmp.setLeft(root);
+            tmp.rotRR(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotRR(pivot);
+        }
+    }
+
+    /**
      * Helper method to remove and replace the root of the tree.
      */
     private void rootRemove() {
@@ -802,7 +1007,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 tmp_p = tmp;
                 tmp = tmp.getRight();
             } else if (tmp.compareKey(key) > 0) {
-                save = tmp_p;
+                save = tmp_p == null ? root : tmp_p;
                 tmp_p = tmp;
                 tmp = tmp.getLeft();
             } else {
@@ -845,11 +1050,12 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     /**
      * An inner class to represent an entry of the TreeMap
      */
-    private class TreeMapEntry implements Map.Entry<K, V> {
+    private class TreeMapEntry implements Map.Entry<K, V>, Comparable<TreeMapEntry> {
         K key;
         V value;
         TreeMapEntry left;
         TreeMapEntry right;
+        boolean isBlack;
 
         /**
          * @param key   the key
@@ -987,6 +1193,31 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         }
 
         /**
+         * Returns if the color of this node is black.
+         * 
+         * @return if the node is black
+         */
+        protected boolean isBlack() {
+            return isBlack;
+        }
+
+        /**
+         * Returns if the color of this node is red.
+         * 
+         * @return if the node is red
+         */
+        protected boolean isRed() {
+            return !isBlack;
+        }
+
+        /**
+         * Sets the color of this node as black.
+         */
+        protected void setBlack() {
+            this.isBlack = true;
+        }
+
+        /**
          * Replaces the left child of this entry.
          * 
          * @param left the new left child to store
@@ -996,6 +1227,13 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             TreeMapEntry ret = this.left;
             this.left = left;
             return ret;
+        }
+
+        /**
+         * Sets the color of this node as red.
+         */
+        protected void setRed() {
+            this.isBlack = false;
         }
 
         /**
@@ -1020,6 +1258,18 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             V ret = this.value;
             this.value = value;
             return ret;
+        }
+
+        public void swapColor(TreeMapEntry rhs) {
+            if (isBlack() != rhs.isBlack()) {
+                if (isBlack()) {
+                    setRed();
+                    rhs.setBlack();
+                } else {
+                    setBlack();
+                    rhs.setRed();
+                }
+            }
         }
 
         /**
@@ -1069,6 +1319,120 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         }
 
         /**
+         * Helper method for Red-Black Tree which handles left-left rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotLL(TreeMapEntry pivot) {
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (getChild(pivot.getKey()) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (!pivot.hasLeft() || !pivot.getLeft().hasLeft()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeMapEntry tmp = pivot.getLeft();
+            if (getLeft().compareKey(pivot.getKey()) == 0) {
+                setLeft(tmp);
+            } else {
+                setRight(tmp);
+            }
+            pivot.setLeft(tmp.getRight());
+            tmp.setRight(pivot);
+        }
+
+        /**
+         * Helper method for Red-Black Tree which handles left-right rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotLR(TreeMapEntry pivot) {
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (getChild(pivot.getKey()) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (!pivot.hasLeft() || !pivot.getLeft().hasRight()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeMapEntry tmp = pivot.getLeft();
+            pivot.setLeft(tmp.getRight());
+            tmp.setRight(tmp.getRight().getLeft());
+            pivot.getLeft().setLeft(tmp);
+            rotLL(pivot);
+        }
+
+        /**
+         * Helper method for Red-Black Tree which handles right-left rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotRL(TreeMapEntry pivot) {
+            if (getChild(pivot) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (!pivot.hasRight() || !pivot.getRight().hasLeft()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeMapEntry tmp = pivot.getRight();
+            pivot.setRight(tmp.getLeft());
+            tmp.setLeft(tmp.getLeft().getRight());
+            pivot.getRight().setRight(tmp);
+            rotRR(pivot);
+        }
+
+        /**
+         * Helper method for Red-Black Tree which handles right-right rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotRR(TreeMapEntry pivot) {
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (getChild(pivot.getKey()) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (!pivot.hasRight() || !pivot.getRight().hasRight()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeMapEntry tmp = pivot.getRight();
+            if (getLeft().compareKey(pivot.getKey()) == 0) {
+                setLeft(tmp);
+            } else {
+                setRight(tmp);
+            }
+            pivot.setRight(tmp.getLeft());
+            tmp.setLeft(pivot);
+        }
+
+        /**
          * Return the child of the entry with a specific key, if one exists.
          * 
          * @param key the key to reference
@@ -1114,6 +1478,11 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
             return getKey().compareTo(k);
         }
+
+        @Override
+        public int compareTo(TreeMapEntry o) {
+            return compareKey(o.getKey());
+        }
     }
 
     /*
@@ -1139,11 +1508,11 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         boolean toInclusive;
 
         public SubTreeMap(TreeMap<K, V> treeMap, K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+            this.treeMap = treeMap;
             if (compareKey(toKey, fromKey) < 0) {
                 throw new IllegalArgumentException("invalid range");
             }
 
-            this.treeMap = treeMap;
             this.fromKey = fromKey;
             this.fromInclusive = fromInclusive;
             this.toKey = toKey;
@@ -1153,9 +1522,9 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         private boolean inBounds(Object key) {
             K k = (K) key;
 
-            if (fromInclusive ? compareKey(k, fromKey) < 0 : comparator().compare(k, fromKey) <= 0) {
+            if (fromInclusive ? compareKey(k, fromKey) < 0 : compareKey(k, fromKey) <= 0) {
                 return false;
-            } else if (toInclusive ? compareKey(toKey, k) <= 0 : compareKey(toKey, k) < 0) {
+            } else if (toInclusive ? compareKey(toKey, k) < 0 : compareKey(toKey, k) <= 0) {
                 return false;
             }
             return true;
@@ -1594,7 +1963,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         @Override
         public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-            return new DescendingTreeMap(treeMap.subMap(fromKey, fromInclusive, toKey, toInclusive));
+            return new DescendingTreeMap(treeMap.subMap(toKey, toInclusive, fromKey, fromInclusive));
         }
 
         @Override
