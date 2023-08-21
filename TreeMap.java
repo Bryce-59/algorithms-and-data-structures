@@ -206,22 +206,29 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @exception ClassCastException if the key has an inappropriate type
      */
     public V remove(Object key) {
+        boolean wasRed = false;
+        TreeMapEntry k = null;
         V ret = null;
         if (isEmpty()) {
             return null;
         } else if (root.compareKey(key) == 0) {
             ret = root.getValue();
+            wasRed = root.isRed();
             rootRemove();
+            k = root;
         } else {
             TreeMapEntry tmp_p = getParent(key);
             TreeMapEntry tmp = tmp_p.getChild(key);
-            ret = tmp != null ? tmp.getValue() : null;
             if (tmp == null) {
                 return null;
             }
+            ret = tmp.getValue();
+            wasRed = tmp.isRed();
             tmp_p.remove(tmp);
+
+            k = tmp_p.compareKey(key) > 0 ? tmp.getRight() : tmp.getLeft();
         }
-        // rebalance();
+        rebalanceRemove(k, wasRed);
         size--;
         return ret;
     }
@@ -432,15 +439,22 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         TreeMapEntry node = firstParent();
         TreeMapEntry ret;
+
+        TreeMapEntry k = null;
+        boolean wasRed = false;
         if (node == null) {
             ret = root;
+            wasRed = root.isRed();
             rootRemove();
+            k = root;
         } else {
             ret = node.getLeft();
+            wasRed = node.isRed();
             node.remove(ret);
+            k = node.hasLeft() ? node.getLeft() : node;
         }
         size--;
-        // rebalance();
+        rebalanceRemove(k, wasRed);
         return ret;
     }
 
@@ -457,15 +471,22 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
 
         TreeMapEntry node = lastParent();
         TreeMapEntry ret;
+
+        TreeMapEntry k = null;
+        boolean wasRed = false;
         if (node == null) {
             ret = root;
+            wasRed = root.isRed();
             rootRemove();
+            k = root;
         } else {
             ret = node.getRight();
+            wasRed = node.isRed();
             node.remove(ret);
+            k = node.hasRight() ? node.getRight() : node;
         }
         size--;
-        // rebalance();
+        rebalanceRemove(k, wasRed);
         return ret;
     }
 
@@ -834,6 +855,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 }
             }
         }
+        rebalanceVerify();
     }
 
     /**
@@ -841,39 +863,130 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * tree.
      * 
      * @param key the key that was just inserted
+     * 
+     * @exception IllegalArgumentException Key not in tree.
      */
-    private void rebalanceRemove(K key, boolean wasRed) {
-        if (root.compareKey(key) == 0) {
-            root.setBlack();
-        } else {
-            TreeMapEntry tmp_gg = null;
-            TreeMapEntry tmp_g = null;
-            TreeMapEntry tmp_p = null;
-            TreeMapEntry tmp_u = null;
-            TreeMapEntry tmp_c = root;
-            TreeMapEntry tmp_s = null;
+    private void rebalanceRemove(TreeMapEntry k, boolean wasRed) {
+        if (k != null) {
+            K key = k.getKey();
+            if (root.compareKey(key) == 0) {
+                root.setBlack();
+            } else {
+                TreeMapEntry tmp_g = null;
+                TreeMapEntry tmp_p = null;
+                TreeMapEntry tmp_c = root;
+                TreeMapEntry tmp_s = null;
 
-            // find the child
-            while (!(tmp_c.compareKey(key) == 0)) {
-                tmp_gg = tmp_g;
-                tmp_g = tmp_p;
-                tmp_p = tmp_c;
-                tmp_u = tmp_s;
-                if (tmp_c.compareKey(key) < 0) {
-                    tmp_c = tmp_c.getLeft();
-                    tmp_s = tmp_c.getRight();
+                // find the child
+                while (tmp_c.compareKey(key) != 0) {
+                    tmp_g = tmp_p;
+                    tmp_p = tmp_c;
+                    if (tmp_c.compareKey(key) < 0) {
+                        tmp_s = tmp_c.getLeft();
+                        tmp_c = tmp_c.getRight();
+                    } else {
+                        tmp_s = tmp_c.getRight();
+                        tmp_c = tmp_c.getLeft();
+                    }
+                    if (tmp_c == null) {
+                        throw new IllegalArgumentException("Key " + key + " is not in TreeMap.");
+                    }
+                }
+
+                if (wasRed || tmp_c.isRed()) {
+                    tmp_c.setBlack();
                 } else {
-                    tmp_c = tmp_c.getRight();
-                    tmp_s = tmp_c.getLeft();
+                    boolean left = tmp_p.compareKey(key) > 0;
+                    if (tmp_s != null && tmp_s.isRed()) {
+
+                        tmp_s.setBlack();
+                        tmp_p.setRed();
+                        rotRR(tmp_g, tmp_p);
+                        tmp_s = left ? tmp_p.getRight() : tmp_p.getLeft();
+                    }
+                    if ((tmp_s.getLeft() == null || tmp_s.getLeft().isBlack())
+                            && (tmp_s.getRight() == null || tmp_s.getRight().isBlack())) {
+                        tmp_s.setRed();
+                        tmp_c = tmp_p;
+                    } else if ((!tmp_s.hasLeft() || tmp_s.getLeft().isBlack())) {
+                        tmp_s.getRight().setBlack();
+                        tmp_s.setRed();
+                        if (!left) {
+                            rotRR(tmp_p, tmp_s);
+                            tmp_s = tmp_p.getLeft();
+                        }
+                    } else if ((!tmp_s.hasRight() || tmp_s.getRight().isBlack())) {
+                        tmp_s.getLeft().setBlack();
+                        tmp_s.setRed();
+                        if (left) {
+                            rotLL(tmp_p, tmp_s);
+                            tmp_s = tmp_p.getRight();
+                        }
+                    } else {
+                        if (tmp_p.isBlack()) {
+                            tmp_s.setBlack();
+                        } else {
+                            tmp_s.setRed();
+                        }
+                        tmp_g.setBlack();
+                        if (left && tmp_s.hasRight()) {
+                            tmp_s.getRight().setBlack();
+                        } else if (!left && tmp_s.hasLeft()) {
+                            tmp_s.getLeft().setBlack();
+                        }
+                        if (left) {
+                            rotRR(tmp_g, tmp_p);
+                        } else {
+                            rotLL(tmp_g, tmp_p);
+                        }
+
+                        tmp_c = root;
+                    }
+                    rebalanceRemove(tmp_c, wasRed);
+                    tmp_c.setBlack();
                 }
             }
-
-            if (wasRed || tmp_c.isRed()) {
-                tmp_c.setBlack();
-            } else {
-
-            }
         }
+        rebalanceVerify();
+    }
+
+    /**
+     * Developer helper function to verify that the Red-Black conditions are met.
+     */
+    private void rebalanceVerify() {
+        if (!isEmpty()) {
+            if (root != null && root.isRed()) {
+                throw new IllegalStateException("The root must be a Black node.");
+            }
+            rebalanceVerifyHelper(root);
+        }
+    }
+
+    /**
+     * Helper function to rebalanceVerify to help confirm Red-Black conditions.
+     * 
+     * @param current
+     * @return
+     */
+    private int rebalanceVerifyHelper(TreeMapEntry current) {
+        if (current == null) {
+            return 1;
+        }
+
+        boolean isRed = current.isRed();
+        if (isRed && !((!current.hasLeft() || current.getLeft().isBlack())
+                && (!current.hasRight() || current.getRight().isBlack()))) {
+            throw new IllegalStateException("Red nodes may only have Black children.");
+        }
+
+        int ldepth = rebalanceVerifyHelper(current.getLeft());
+        int rdepth = rebalanceVerifyHelper(current.getLeft());
+
+        if (ldepth != rdepth) {
+            throw new IllegalStateException("Tree is not constructed with consistent Black Depth.");
+        }
+
+        return ldepth + (isRed ? 0 : 1);
     }
 
     /**
@@ -1260,6 +1373,11 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
             return ret;
         }
 
+        /**
+         * Swaps the colors of two entries.
+         * 
+         * @param rhs the entry to swap with.
+         */
         public void swapColor(TreeMapEntry rhs) {
             if (isBlack() != rhs.isBlack()) {
                 if (isBlack()) {
@@ -1438,7 +1556,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
          * @param key the key to reference
          * @return the child if it exists, else null
          */
-
         protected TreeMapEntry getChild(K key) {
             if (hasLeft() && getLeft().compareKey(key) == 0) {
                 return getLeft();
