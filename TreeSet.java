@@ -3,7 +3,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 import java.util.SortedSet;
@@ -37,8 +36,8 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
     public boolean add(E e) {
         if (size() == 0) {
             root = new TreeSetEntry(e);
+            root.setBlack();
             size++;
-            rebalance(add);
             return true;
         }
 
@@ -55,15 +54,40 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             tmp_p.setRight(add);
         }
         size++;
-        rebalance(add);
+        rebalanceInsert(e);
         return true;
     }
 
+    /**
+     * Prints out a visualization of the tree. Used for debugging purposes.
+     */
+    protected void printTree() {
+        printTree(root, "");
+    }
+
+    /**
+     * Recursive helper method to visualize a tree.
+     */
+    private void printTree(TreeSetEntry n, String spaces) {
+        if (n != null) {
+            printTree(n.getRight(), spaces + "    ");
+            System.out.println(spaces + (n.isBlack() ? "B:" : "R:") + "(" + n.getData() + ")");
+            printTree(n.getLeft(), spaces + "    ");
+        }
+    }
+
+    /**
+     * Re-balances the TreeMap after insertion according to the rules of a red-black
+     * tree.
+     * 
+     * @param key the key that was just inserted
+     */
     private void rebalanceInsert(E e) {
         if (!isEmpty()) {
             if (root.compare(e) == 0) {
                 root.setBlack();
             } else {
+                TreeSetEntry tmp_gg = null;
                 TreeSetEntry tmp_g = null;
                 TreeSetEntry tmp_p = null;
                 TreeSetEntry tmp_u = null;
@@ -72,49 +96,50 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
 
                 // find the child
                 while (!(tmp_c.compare(e) == 0)) {
+                    tmp_gg = tmp_g;
                     tmp_g = tmp_p;
                     tmp_p = tmp_c;
                     tmp_u = tmp_s;
-                    if (tmp_c.compare(e) < 0) {
-                        tmp_c = tmp_c.getLeft();
+                    if (tmp_c.compare(e) > 0) {
                         tmp_s = tmp_c.getRight();
+                        tmp_c = tmp_c.getLeft();
                     } else {
-                        tmp_c = tmp_c.getRight();
                         tmp_s = tmp_c.getLeft();
+                        tmp_c = tmp_c.getRight();
                     }
                 }
 
                 // red parent -- must be refactored
                 if (tmp_p.isRed()) {
                     // red uncle -- simple recolor
-                    if (tmp_u.isRed()) {
+                    if (tmp_u != null && tmp_u.isRed()) {
                         tmp_p.setBlack();
                         tmp_u.setBlack();
                         tmp_g.setRed();
-                        rebalance(tmp_g.getData());
+                        rebalanceInsert(tmp_g.getData());
                     }
                     // black uncle -- requires rotation
                     else {
                         if (tmp_p.compare(tmp_g.getData()) < 0) {
                             // Left Left
                             if (tmp_p.compare(e) > 0) {
-                                tmp_g.llr();
+                                rotLL(tmp_gg, tmp_g);
                                 tmp_g.swapColor(tmp_p);
                             }
                             // Left Right
                             else {
-                                tmp_g.lrr();
+                                rotLR(tmp_gg, tmp_g);
                                 tmp_g.swapColor(tmp_c);
                             }
                         } else {
                             // Right Left
                             if (tmp_p.compare(e) > 0) {
-                                tmp_g.rlr();
+                                rotRL(tmp_gg, tmp_g);
                                 tmp_g.swapColor(tmp_c);
                             }
                             // Right Right
                             else {
-                                tmp_g.rrr();
+                                rotRR(tmp_gg, tmp_g);
                                 tmp_g.swapColor(tmp_p);
                             }
                         }
@@ -124,38 +149,95 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         }
     }
 
-    private void rebalanceDelete(E e, boolean isRed) {
-        if (!isEmpty()) {
+    /**
+     * Re-balances the TreeMap after removal according to the rules of a red-black
+     * tree.
+     * 
+     * @param k      the entry that replaced the removed entry, or the removed entry
+     *               if
+     *               it was replaced by null
+     * @param wasRed whether or not the removed entry was a red node
+     * 
+     */
+    private void rebalanceRemove(TreeSetEntry k, boolean wasRed) {
+        if (k != null) {
+            E e = k.getData();
             if (root.compare(e) == 0) {
                 root.setBlack();
-            } else {
+            } else if (!(wasRed && k.isRed())) {
                 TreeSetEntry tmp_g = null;
                 TreeSetEntry tmp_p = null;
-                TreeSetEntry tmp_u = null;
                 TreeSetEntry tmp_c = root;
                 TreeSetEntry tmp_s = null;
 
                 // find the child
-                while (!(tmp_c.compare(e) == 0)) {
+                while (tmp_c != null && tmp_c.compare(e) != 0) {
                     tmp_g = tmp_p;
                     tmp_p = tmp_c;
-                    tmp_u = tmp_s;
                     if (tmp_c.compare(e) < 0) {
-                        tmp_c = tmp_c.getLeft();
-                        tmp_s = tmp_c.getRight();
-                    } else {
-                        tmp_c = tmp_c.getRight();
                         tmp_s = tmp_c.getLeft();
+                        tmp_c = tmp_c.getRight();
+                    } else {
+                        tmp_s = tmp_c.getRight();
+                        tmp_c = tmp_c.getLeft();
                     }
                 }
 
-                tmp_c.setBlack();
-                if (!isRed) {
+                if (wasRed || (tmp_c != null && tmp_c.isRed())) {
+                    if (tmp_c != null) {
+                        tmp_c.setBlack();
+                    }
+                } else {
+                    boolean left = tmp_p.compare(e) > 0;
+                    if (tmp_s.isRed()) {
+                        tmp_s.setBlack();
+                        tmp_p.setRed();
+                        rotRR(tmp_g, tmp_p);
+                        tmp_s = left ? tmp_p.getRight() : tmp_p.getLeft();
+                    }
 
+                    if ((!tmp_s.hasLeft() || tmp_s.getLeft().isBlack())
+                            && (!tmp_s.hasRight() || tmp_s.getRight().isBlack())) {
+                        tmp_s.setRed();
+                        tmp_c = tmp_p;
+                    } else if (!left && (!tmp_s.hasLeft() || tmp_s.getLeft().isBlack())) {
+                        tmp_s.getRight().setBlack();
+                        tmp_s.setRed();
+                        if (left) {
+                            rotRR(tmp_p, tmp_s);
+                            tmp_s = tmp_p.getLeft();
+                        }
+                    } else if (left && (!tmp_s.hasRight() || tmp_s.getRight().isBlack())) {
+                        tmp_s.getLeft().setBlack();
+                        tmp_s.setRed();
+                        if (!left) {
+                            rotLL(tmp_p, tmp_s);
+                            tmp_s = tmp_p.getRight();
+                        }
+                    } else {
+                        if (tmp_p.isBlack()) {
+                            tmp_s.setBlack();
+                        } else {
+                            tmp_s.setRed();
+                        }
+                        tmp_p.setBlack();
+                        if (left && tmp_s.hasRight()) {
+                            tmp_s.getRight().setBlack();
+                        } else if (!left && tmp_s.hasLeft()) {
+                            tmp_s.getLeft().setBlack();
+                        }
+                        if (left) {
+                            rotRR(tmp_g, tmp_p);
+                        } else {
+                            rotLL(tmp_g, tmp_p);
+                        }
+                        tmp_c = root;
+                    }
+                    rebalanceRemove(tmp_c, wasRed);
+                    tmp_c.setBlack();
                 }
-
-
-
+            }
+        }
     }
 
     /**
@@ -176,6 +258,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         for (E e : c) {
             ret |= add(e);
         }
+
         return ret;
     }
 
@@ -208,7 +291,6 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             }
             tmp_p.remove(tmp);
         }
-        rebalance();
         size--;
         return true;
     }
@@ -289,7 +371,6 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             node.remove(ret);
         }
         size--;
-        rebalance();
         return ret.getData();
     }
 
@@ -313,7 +394,6 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             node.remove(ret);
         }
         size--;
-        rebalance();
         return ret.getData();
     }
 
@@ -343,6 +423,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      */
     @SuppressWarnings("unchecked")
     public boolean contains(Object o) {
+
         if (isEmpty()) {
             return false;
         }
@@ -354,7 +435,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             return false;
         }
 
-        return root.compare(o) == 0 ? true : getParent(element).getChild(element) != null;
+        return root.compare(element) == 0 ? true : getParent(element).getChild(element) != null;
     }
 
     /**
@@ -419,7 +500,8 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the greatest element less than the given element
      */
     public E lower(E e) {
-        return downEntry(e, false).getData();
+        TreeSetEntry entry = downEntry(e, false);
+        return entry != null ? entry.getData() : null;
     }
 
     /**
@@ -430,7 +512,8 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the least element greater than the given element
      */
     public E higher(E e) {
-        return upEntry(e, false).getData();
+        TreeSetEntry entry = upEntry(e, false);
+        return entry != null ? entry.getData() : null;
     }
 
     /**
@@ -441,7 +524,8 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the greatest element less than or equal to the given element
      */
     public E floor(E e) {
-        return downEntry(e, true).getData();
+        TreeSetEntry entry = downEntry(e, true);
+        return entry != null ? entry.getData() : null;
     }
 
     /**
@@ -452,7 +536,8 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return the least element greater than or equal to the given element
      */
     public E ceiling(E e) {
-        return upEntry(e, true).getData();
+        TreeSetEntry entry = upEntry(e, true);
+        return entry != null ? entry.getData() : null;
     }
 
     @Override
@@ -515,7 +600,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return a sub-view of the set
      */
     public NavigableSet<E> subSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
-        return new SubTreeSet(fromElement, fromInclusive, toElement, toInclusive);
+        return new SubTreeSet(this, fromElement, fromInclusive, toElement, toInclusive);
     }
 
     /**
@@ -620,6 +705,10 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return an entry that is less than or equal to the parameter
      */
     private TreeSetEntry downEntry(E data, boolean inclusive) {
+        if (isEmpty()) {
+            return null;
+        }
+
         TreeSetEntry save = null;
         TreeSetEntry tmp_p = null;
         TreeSetEntry tmp = root;
@@ -628,7 +717,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                 tmp_p = tmp;
                 tmp = tmp.getLeft();
             } else if (tmp.compare(data) < 0) {
-                save = tmp_p;
+                save = tmp;
                 tmp_p = tmp;
                 tmp = tmp.getRight();
             } else {
@@ -700,6 +789,153 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
     }
 
     /**
+     * Developer helper function to verify that the Red-Black conditions are met.
+     */
+    protected void rebalanceVerify() {
+        if (!isEmpty()) {
+            if (root != null && root.isRed()) {
+                throw new IllegalStateException("The root must be a Black node.");
+            }
+            rebalanceVerifyHelper(root);
+        }
+    }
+
+    /**
+     * Helper function to rebalanceVerify to help confirm Red-Black conditions.
+     * 
+     * @param current
+     * @return
+     */
+    private int rebalanceVerifyHelper(TreeSetEntry current) {
+
+        if (current == null) {
+            return 1;
+        }
+
+        if ((current.hasLeft() && current.compare(current.getLeft().getData()) < 0)
+                || (current.hasRight() && current.compare(current.getRight().getData()) > 0)) {
+            throw new IllegalStateException("Red-black Tree is not properly sorted");
+        }
+
+        boolean isRed = current.isRed();
+
+        if (isRed && ((current.hasLeft() && current.getLeft().isRed())
+                || (current.hasRight() && current.getRight().isRed()))) {
+            throw new IllegalStateException("Red nodes may only have Black children.");
+        }
+
+        int ldepth = rebalanceVerifyHelper(current.getLeft());
+        int rdepth = rebalanceVerifyHelper(current.getRight());
+
+        if (ldepth != rdepth) {
+
+            throw new IllegalStateException("Tree is not constructed with consistent Black Depth.");
+        }
+
+        return ldepth + (isRed ? 0 : 1);
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles left-left rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotLL(TreeSetEntry parent, TreeSetEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeSetEntry tmp = new TreeSetEntry(null);
+            tmp.setLeft(root);
+            tmp.rotLL(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotLL(pivot);
+        }
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles left-right rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotLR(TreeSetEntry parent, TreeSetEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeSetEntry tmp = new TreeSetEntry(null);
+            tmp.setLeft(root);
+            tmp.rotLR(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotLR(pivot);
+        }
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles right-left rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotRL(TreeSetEntry parent, TreeSetEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeSetEntry tmp = new TreeSetEntry(null);
+            tmp.setLeft(root);
+            tmp.rotRL(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotRL(pivot);
+        }
+    }
+
+    /**
+     * Helper method for Red-Black Tree which handles right-right rotations
+     * 
+     * @param parent the entry that is the parent of the pivot
+     * @param pivot  the entry at the highest level of the rotation
+     * 
+     * @exception NullPointerException if pivot is null or parent is null and pivot
+     *                                 is not the root
+     */
+    private void rotRR(TreeSetEntry parent, TreeSetEntry pivot) {
+        if (pivot == null) {
+            throw new NullPointerException("Pivot cannot be null");
+        }
+        if (pivot.equals(root)) {
+            TreeSetEntry tmp = new TreeSetEntry(null);
+            tmp.setLeft(root);
+            tmp.rotRR(root);
+            root = tmp.getLeft();
+            tmp.setLeft(null);
+            tmp = null;
+        } else {
+            parent.rotRR(pivot);
+        }
+    }
+
+    /**
      * Helper method to remove and replace the root of the tree.
      */
     private void rootRemove() {
@@ -722,6 +958,10 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
      * @return an entry that is greater than or equal to the parameter
      */
     private TreeSetEntry upEntry(E key, boolean inclusive) {
+        if (isEmpty()) {
+            return null;
+        }
+
         TreeSetEntry save = null;
         TreeSetEntry tmp_p = null;
         TreeSetEntry tmp = root;
@@ -730,7 +970,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                 tmp_p = tmp;
                 tmp = tmp.getRight();
             } else if (tmp.compare(key) > 0) {
-                save = tmp_p;
+                save = tmp;
                 tmp_p = tmp;
                 tmp = tmp.getLeft();
             } else {
@@ -749,6 +989,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                 return tmp;
             }
         }
+
         return tmp_p.compare(key) > 0 ? tmp_p : save;
     }
 
@@ -756,14 +997,14 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         E data;
         TreeSetEntry left;
         TreeSetEntry right;
-        boolean color;
+        boolean isBlack;
 
         /**
          * @param data
          */
         public TreeSetEntry(E data) {
             this.data = data;
-            color = false;
+            isBlack = false;
         }
 
         /**
@@ -778,7 +1019,8 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             }
 
             try {
-                return compare(o) == 0;
+                TreeSetEntry rhs = (TreeSetEntry) o;
+                return compare(rhs.getData()) == 0;
             } catch (ClassCastException e) {
 
             }
@@ -831,6 +1073,31 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         }
 
         /**
+         * Returns if the color of this node is black.
+         * 
+         * @return if the node is black
+         */
+        protected boolean isBlack() {
+            return isBlack;
+        }
+
+        /**
+         * Returns if the color of this node is red.
+         * 
+         * @return if the node is red
+         */
+        protected boolean isRed() {
+            return !isBlack;
+        }
+
+        /**
+         * Sets the color of this node as black.
+         */
+        protected void setBlack() {
+            this.isBlack = true;
+        }
+
+        /**
          * Replaces the left child of this entry.
          * 
          * @param left the new left child to store
@@ -843,6 +1110,13 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         }
 
         /**
+         * Sets the color of this node as red.
+         */
+        protected void setRed() {
+            this.isBlack = false;
+        }
+
+        /**
          * Replaces the right child of this entry.
          * 
          * @param the new right child to store
@@ -852,6 +1126,23 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             TreeSetEntry ret = this.right;
             this.right = right;
             return ret;
+        }
+
+        /**
+         * Swaps the colors of two entries.
+         * 
+         * @param rhs the entry to swap with.
+         */
+        public void swapColor(TreeSetEntry rhs) {
+            if (isBlack() != rhs.isBlack()) {
+                if (isBlack()) {
+                    setRed();
+                    rhs.setBlack();
+                } else {
+                    setBlack();
+                    rhs.setRed();
+                }
+            }
         }
 
         /**
@@ -872,9 +1163,13 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                     tmp_p = tmp;
                     tmp = tmp.getRight();
                 }
-                data = tmp.getData();
+                E t_data = tmp.getData();
                 tmp_p.remove(tmp);
+                child.data = t_data;
             } else {
+                TreeSetEntry k = null;
+                boolean wasRed = child.isRed();
+
                 if (child.hasLeft()) {
                     if (getLeft() != null && getLeft().equals(child)) {
                         setLeft(child.getLeft());
@@ -896,7 +1191,125 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                         setRight(null);
                     }
                 }
+
+                k = compare(data) > 0 ? getRight() : getLeft();
+                k = k != null ? k : child;
+                TreeSet.this.rebalanceRemove(k, wasRed);
             }
+        }
+
+        /**
+         * Helper method for Red-Black Tree which handles left-left rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotLL(TreeSetEntry pivot) {
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (getChild(pivot.getData()) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (!pivot.hasLeft() || !pivot.getLeft().hasLeft()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeSetEntry tmp = pivot.getLeft();
+            if (getLeft().compare(pivot.getData()) == 0) {
+                setLeft(tmp);
+            } else {
+                setRight(tmp);
+            }
+            pivot.setLeft(tmp.getRight());
+            tmp.setRight(pivot);
+        }
+
+        /**
+         * Helper method for Red-Black Tree which handles left-right rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotLR(TreeSetEntry pivot) {
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (getChild(pivot.getData()) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (!pivot.hasLeft() || !pivot.getLeft().hasRight()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeSetEntry tmp = pivot.getLeft();
+            pivot.setLeft(tmp.getRight());
+            tmp.setRight(tmp.getRight().getLeft());
+            pivot.getLeft().setLeft(tmp);
+            rotLL(pivot);
+        }
+
+        /**
+         * Helper method for Red-Black Tree which handles right-left rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotRL(TreeSetEntry pivot) {
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (getChild(pivot.getData()) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (!pivot.hasRight() || !pivot.getRight().hasLeft()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeSetEntry tmp = pivot.getRight();
+            pivot.setRight(tmp.getLeft());
+            tmp.setLeft(tmp.getLeft().getRight());
+            pivot.getRight().setRight(tmp);
+            rotRR(pivot);
+        }
+
+        /**
+         * Helper method for Red-Black Tree which handles right-right rotations
+         * 
+         * @param pivot the child which is participating in the rotation
+         * 
+         * @exception NullPointerException     if pivot is null
+         * @exception IllegalArgumentException if pivot is not a child
+         * @exception IllegalStateException    if rotation is not possible
+         */
+        protected void rotRR(TreeSetEntry pivot) {
+            if (pivot == null) {
+                throw new NullPointerException("Pivot cannot be null");
+            }
+            if (getChild(pivot.getData()) == null) {
+                throw new IllegalArgumentException("Pivot must be a child");
+            }
+            if (!pivot.hasRight() || !pivot.getRight().hasRight()) {
+                throw new IllegalStateException("Invalid rotation");
+            }
+
+            TreeSetEntry tmp = pivot.getRight();
+            if (getLeft().compare(pivot.getData()) == 0) {
+                setLeft(tmp);
+            } else {
+                setRight(tmp);
+            }
+            pivot.setRight(tmp.getLeft());
+            tmp.setLeft(pivot);
         }
 
         /**
@@ -947,14 +1360,14 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         boolean noRemove;
 
         public TreeSetIterator() {
-            next = first();
-            lastElement = false;
+            lastElement = isEmpty();
+            next = !lastElement ? first() : null;
             noRemove = true;
         }
 
         @Override
         public boolean hasNext() {
-            return lastElement;
+            return !lastElement;
         }
 
         @Override
@@ -962,12 +1375,13 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             if (!hasNext()) {
                 throw new IllegalStateException("No next exists.");
             }
-            if (next == null ? last() == null : next.equals(last())) {
-                lastElement = true;
-            }
             toRemove = next;
             noRemove = false;
-            next = higher(next);
+            if (next == null ? last() == null : next.equals(last())) {
+                lastElement = true;
+            } else {
+                next = higher(next);
+            }
             return toRemove;
         }
 
@@ -1139,7 +1553,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
 
         @Override
         public NavigableSet<E> subSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
-            return new DescendingTreeSet(treeSet.subSet(fromElement, fromInclusive, toElement, toInclusive));
+            return new DescendingTreeSet(treeSet.subSet(toElement, toInclusive, fromElement, fromInclusive));
         }
 
         @Override
@@ -1175,14 +1589,14 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             boolean noRemove;
 
             public DescendingTreeSetIterator() {
-                next = first();
-                lastElement = false;
+                lastElement = isEmpty();
+                next = !lastElement ? first() : null;
                 noRemove = true;
             }
 
             @Override
             public boolean hasNext() {
-                return lastElement;
+                return !lastElement;
             }
 
             @Override
@@ -1190,12 +1604,13 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                 if (!hasNext()) {
                     throw new IllegalStateException("No next exists.");
                 }
-                if (next == null ? last() == null : next.equals(last())) {
-                    lastElement = true;
-                }
                 toRemove = next;
                 noRemove = false;
-                next = higher(next);
+                if (next == null ? last() == null : next.equals(last())) {
+                    lastElement = true;
+                } else {
+                    next = higher(next);
+                }
                 return toRemove;
             }
 
@@ -1216,9 +1631,17 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         E fromElement;
         boolean fromInclusive;
         E toElement;
-        boolean toInclusive;s
+        boolean toInclusive;
 
-        public SubTreeSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
+        public SubTreeSet(TreeSet<E> treeSet, E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
+            if (treeSet == null) {
+                throw new NullPointerException("submap of null does not exist");
+            }
+            this.treeSet = treeSet;
+
+            if (compare(toElement, fromElement) < 0) {
+                throw new IllegalArgumentException("invalid range: " + fromElement + " to " + toElement);
+            }
             this.fromElement = fromElement;
             this.fromInclusive = fromInclusive;
             this.toElement = toElement;
@@ -1230,7 +1653,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
 
             if (fromInclusive ? compare(e, fromElement) < 0 : compare(e, fromElement) <= 0) {
                 return false;
-            } else if (toInclusive ? compare(toElement, e) <= 0 : compare(toElement, e) < 0) {
+            } else if (toInclusive ? compare(toElement, e) < 0 : compare(toElement, e) <= 0) {
                 return false;
             }
             return true;
@@ -1266,6 +1689,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
             Iterator<E> it = iterator();
             int ret = 0;
             while (it.hasNext()) {
+                it.next();
                 ret++;
             }
             return ret;
@@ -1417,7 +1841,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                     return null;
                 }
             }
-            return treeSet.floor(e);
+            return treeSet.lower(e);
         }
 
         @Override
@@ -1453,7 +1877,7 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
                     return null;
                 }
             }
-            return treeSet.ceiling(e);
+            return treeSet.higher(e);
         }
 
         @Override
@@ -1520,44 +1944,47 @@ public class TreeSet<E extends Comparable<E>> extends AbstractSet<E> implements 
         }
 
         private class SubTreeSetIterator implements Iterator<E> {
+            Iterator<E> prev;
+            Iterator<E> it;
             E next;
-            E toRemove;
-
-            boolean lastElement;
-            boolean noRemove;
 
             public SubTreeSetIterator() {
-                next = first();
-                lastElement = false;
-                noRemove = true;
+                prev = treeSet.iterator();
+                boolean ret = prev.hasNext();
+
+                int c = -1;
+                while (ret) {
+                    next = prev.next();
+                    ret = prev.hasNext() && (fromInclusive ? compare(next, fromElement) < 0
+                            : compare(next, fromElement) <= 0);
+                    c++;
+                }
+
+                it = treeSet.iterator();
+                for (int i = 0; i < c; i++) {
+                    it.next();
+                }
             }
 
             @Override
             public boolean hasNext() {
-                return lastElement;
+                return it.hasNext() && (toInclusive ? compare(next, toElement) <= 0
+                        : compare(next, toElement) < 0);
             }
 
             @Override
             public E next() {
                 if (!hasNext()) {
-                    throw new IllegalStateException("No next exists.");
+                    throw new IllegalStateException();
                 }
-                if (next == null ? last() == null : next.equals(last())) {
-                    lastElement = true;
-                }
-                toRemove = next;
-                noRemove = false;
-                next = higher(next);
-                return toRemove;
+
+                next = prev.hasNext() ? prev.next() : null;
+                return it.next();
             }
 
             @Override
             public void remove() {
-                if (noRemove) {
-                    throw new IllegalStateException("Cannot remove at this time.");
-                }
-                SubTreeSet.this.remove(toRemove);
-                noRemove = true;
+                it.remove();
             }
         }
 

@@ -206,16 +206,12 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @exception ClassCastException if the key has an inappropriate type
      */
     public V remove(Object key) {
-        boolean wasRed = false;
-        TreeMapEntry k = null;
         V ret = null;
         if (isEmpty()) {
             return null;
         } else if (root.compareKey(key) == 0) {
             ret = root.getValue();
-            wasRed = root.isRed();
             rootRemove();
-            k = root;
         } else {
             TreeMapEntry tmp_p = getParent(key);
             TreeMapEntry tmp = tmp_p.getChild(key);
@@ -223,12 +219,8 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 return null;
             }
             ret = tmp.getValue();
-            wasRed = tmp.isRed();
             tmp_p.remove(tmp);
-
-            k = tmp_p.compareKey(key) > 0 ? tmp.getRight() : tmp.getLeft();
         }
-        rebalanceRemove(k, wasRed);
         size--;
         return ret;
     }
@@ -440,21 +432,14 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         TreeMapEntry node = firstParent();
         TreeMapEntry ret;
 
-        TreeMapEntry k = null;
-        boolean wasRed = false;
         if (node == null) {
             ret = root;
-            wasRed = root.isRed();
             rootRemove();
-            k = root;
         } else {
             ret = node.getLeft();
-            wasRed = node.isRed();
             node.remove(ret);
-            k = node.hasLeft() ? node.getLeft() : node;
         }
         size--;
-        rebalanceRemove(k, wasRed);
         return ret;
     }
 
@@ -472,21 +457,14 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         TreeMapEntry node = lastParent();
         TreeMapEntry ret;
 
-        TreeMapEntry k = null;
-        boolean wasRed = false;
         if (node == null) {
             ret = root;
-            wasRed = root.isRed();
             rootRemove();
-            k = root;
         } else {
             ret = node.getRight();
-            wasRed = node.isRed();
             node.remove(ret);
-            k = node.hasRight() ? node.getRight() : node;
         }
         size--;
-        rebalanceRemove(k, wasRed);
         return ret;
     }
 
@@ -602,7 +580,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 tmp_p = tmp;
                 tmp = tmp.getLeft();
             } else if (tmp.compareKey(key) < 0) {
-                save = tmp_p == null ? root : tmp_p;
+                save = tmp;
                 tmp_p = tmp;
                 tmp = tmp.getRight();
             } else {
@@ -779,7 +757,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
     private void printTree(TreeMapEntry n, String spaces) {
         if (n != null) {
             printTree(n.getRight(), spaces + "    ");
-            System.out.println(spaces + "(" + n.getKey() + ", " + n.getValue() + ")");
+            System.out.println(spaces + (n.isBlack() ? "B:" : "R:") + "(" + n.getKey() + ", " + n.getValue() + ")");
             printTree(n.getLeft(), spaces + "    ");
         }
     }
@@ -855,30 +833,31 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 }
             }
         }
-        rebalanceVerify();
     }
 
     /**
      * Re-balances the TreeMap after removal according to the rules of a red-black
      * tree.
      * 
-     * @param key the key that was just inserted
+     * @param k      the entry that replaced the removed entry, or the removed entry
+     *               if
+     *               it was replaced by null
+     * @param wasRed whether or not the removed entry was a red node
      * 
-     * @exception IllegalArgumentException Key not in tree.
      */
     private void rebalanceRemove(TreeMapEntry k, boolean wasRed) {
         if (k != null) {
             K key = k.getKey();
             if (root.compareKey(key) == 0) {
                 root.setBlack();
-            } else {
+            } else if (!(wasRed && k.isRed())) {
                 TreeMapEntry tmp_g = null;
                 TreeMapEntry tmp_p = null;
                 TreeMapEntry tmp_c = root;
                 TreeMapEntry tmp_s = null;
 
                 // find the child
-                while (tmp_c.compareKey(key) != 0) {
+                while (tmp_c != null && tmp_c.compareKey(key) != 0) {
                     tmp_g = tmp_p;
                     tmp_p = tmp_c;
                     if (tmp_c.compareKey(key) < 0) {
@@ -888,37 +867,36 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                         tmp_s = tmp_c.getRight();
                         tmp_c = tmp_c.getLeft();
                     }
-                    if (tmp_c == null) {
-                        throw new IllegalArgumentException("Key " + key + " is not in TreeMap.");
-                    }
                 }
 
-                if (wasRed || tmp_c.isRed()) {
-                    tmp_c.setBlack();
+                if (wasRed || (tmp_c != null && tmp_c.isRed())) {
+                    if (tmp_c != null) {
+                        tmp_c.setBlack();
+                    }
                 } else {
                     boolean left = tmp_p.compareKey(key) > 0;
-                    if (tmp_s != null && tmp_s.isRed()) {
-
+                    if (tmp_s.isRed()) {
                         tmp_s.setBlack();
                         tmp_p.setRed();
                         rotRR(tmp_g, tmp_p);
                         tmp_s = left ? tmp_p.getRight() : tmp_p.getLeft();
                     }
-                    if ((tmp_s.getLeft() == null || tmp_s.getLeft().isBlack())
-                            && (tmp_s.getRight() == null || tmp_s.getRight().isBlack())) {
+
+                    if ((!tmp_s.hasLeft() || tmp_s.getLeft().isBlack())
+                            && (!tmp_s.hasRight() || tmp_s.getRight().isBlack())) {
                         tmp_s.setRed();
                         tmp_c = tmp_p;
-                    } else if ((!tmp_s.hasLeft() || tmp_s.getLeft().isBlack())) {
+                    } else if (!left && (!tmp_s.hasLeft() || tmp_s.getLeft().isBlack())) {
                         tmp_s.getRight().setBlack();
                         tmp_s.setRed();
-                        if (!left) {
+                        if (left) {
                             rotRR(tmp_p, tmp_s);
                             tmp_s = tmp_p.getLeft();
                         }
-                    } else if ((!tmp_s.hasRight() || tmp_s.getRight().isBlack())) {
+                    } else if (left && (!tmp_s.hasRight() || tmp_s.getRight().isBlack())) {
                         tmp_s.getLeft().setBlack();
                         tmp_s.setRed();
-                        if (left) {
+                        if (!left) {
                             rotLL(tmp_p, tmp_s);
                             tmp_s = tmp_p.getRight();
                         }
@@ -928,7 +906,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                         } else {
                             tmp_s.setRed();
                         }
-                        tmp_g.setBlack();
+                        tmp_p.setBlack();
                         if (left && tmp_s.hasRight()) {
                             tmp_s.getRight().setBlack();
                         } else if (!left && tmp_s.hasLeft()) {
@@ -939,7 +917,6 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                         } else {
                             rotLL(tmp_g, tmp_p);
                         }
-
                         tmp_c = root;
                     }
                     rebalanceRemove(tmp_c, wasRed);
@@ -947,13 +924,12 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 }
             }
         }
-        rebalanceVerify();
     }
 
     /**
      * Developer helper function to verify that the Red-Black conditions are met.
      */
-    private void rebalanceVerify() {
+    protected void rebalanceVerify() {
         if (!isEmpty()) {
             if (root != null && root.isRed()) {
                 throw new IllegalStateException("The root must be a Black node.");
@@ -969,20 +945,28 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
      * @return
      */
     private int rebalanceVerifyHelper(TreeMapEntry current) {
+
         if (current == null) {
             return 1;
         }
 
+        if ((current.hasLeft() && current.compareKey(current.getLeft().getKey()) < 0)
+                || (current.hasRight() && current.compareKey(current.getRight().getKey()) > 0)) {
+            throw new IllegalStateException("Red-black Tree is not properly sorted");
+        }
+
         boolean isRed = current.isRed();
-        if (isRed && !((!current.hasLeft() || current.getLeft().isBlack())
-                && (!current.hasRight() || current.getRight().isBlack()))) {
+
+        if (isRed && ((current.hasLeft() && current.getLeft().isRed())
+                || (current.hasRight() && current.getRight().isRed()))) {
             throw new IllegalStateException("Red nodes may only have Black children.");
         }
 
         int ldepth = rebalanceVerifyHelper(current.getLeft());
-        int rdepth = rebalanceVerifyHelper(current.getLeft());
+        int rdepth = rebalanceVerifyHelper(current.getRight());
 
         if (ldepth != rdepth) {
+
             throw new IllegalStateException("Tree is not constructed with consistent Black Depth.");
         }
 
@@ -1120,7 +1104,7 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                 tmp_p = tmp;
                 tmp = tmp.getRight();
             } else if (tmp.compareKey(key) > 0) {
-                save = tmp_p == null ? root : tmp_p;
+                save = tmp;
                 tmp_p = tmp;
                 tmp = tmp.getLeft();
             } else {
@@ -1408,10 +1392,16 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                     tmp_p = tmp;
                     tmp = tmp.getRight();
                 }
-                key = tmp.getKey();
-                value = tmp.getValue();
+                K t_key = tmp.getKey();
+                V t_value = tmp.getValue();
                 tmp_p.remove(tmp);
+                child.key = t_key;
+                child.value = t_value;
             } else {
+
+                TreeMapEntry k = null;
+                boolean wasRed = child.isRed();
+
                 if (child.hasLeft()) {
                     if (getLeft() != null && getLeft().equals(child)) {
                         setLeft(child.getLeft());
@@ -1433,6 +1423,10 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
                         setRight(null);
                     }
                 }
+
+                k = compareKey(key) > 0 ? getRight() : getLeft();
+                k = k != null ? k : child;
+                TreeMap.this.rebalanceRemove(k, wasRed);
             }
         }
 
@@ -1625,6 +1619,10 @@ public class TreeMap<K extends Comparable<K>, V extends Comparable<V>> implement
         boolean toInclusive;
 
         public SubTreeMap(TreeMap<K, V> treeMap, K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+            if (treeMap == null) {
+                throw new NullPointerException("submap of null does not exist");
+            }
+
             this.treeMap = treeMap;
             if (compareKey(toKey, fromKey) < 0) {
                 throw new IllegalArgumentException("invalid range");

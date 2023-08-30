@@ -1,4 +1,8 @@
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.NavigableMap;
+import java.util.Set;
 
 /**
  * A Test Harness for the TreeMap class.
@@ -49,6 +53,8 @@ public class TreeMapTests {
         smapSD1 = (new TreeMap<String, Double>()).subMap(mapSD1.firstKey(), true, mapSD1.lastKey(), true);
         sizeTests(smapSD1, "SubMap"); // isEmpty, size -- submap
 
+        redBlackTests();
+
         // descending tests
         NavigableMap<Integer, String> dmapIS = (new TreeMap<Integer, String>()).descendingMap();
         containsTests(dmapIS, "DescendingTreeMap"); // contains
@@ -75,7 +81,6 @@ public class TreeMapTests {
         putTests(dsmapSD1, dsmapSD2, "DescendingSubMap"); // put -- submap
 
         removeTestsDescending(); // clear, remove
-        setTestsDescending();
 
         dmapSD1 = (new TreeMap<String, Double>()).descendingMap();
         sizeTests(dmapSD1, "DescendingTreeMap"); // isEmpty, size
@@ -86,7 +91,6 @@ public class TreeMapTests {
         // comparator tests
         // null tests
         // sub tests
-        subMapTests();
 
         System.out.println("Total tests: " + numTests);
         System.out.println("Failed tests: " + failedTests);
@@ -416,6 +420,30 @@ public class TreeMapTests {
     }
 
     /**
+     * Tests to make sure the Red-Black tree properties are maintained.
+     */
+    private static void redBlackTests() {
+        TreeMap<Integer, Integer> map = new TreeMap<>();
+        for (int i = 0; i < 999; i++) {
+            map.put(10 * i % 999, i * i);
+            try {
+                map.rebalanceVerify();
+            } catch (Exception e) {
+                printTest("true", "false", "Red-Black Properties -- Insertion");
+            }
+        }
+
+        for (int i = 0; i < 100; i++) {
+            map.remove(10 * i % 999);
+            try {
+                map.rebalanceVerify();
+            } catch (Exception e) {
+                printTest("false", "true", "Red-Black Properties -- Removal");
+            }
+        }
+    }
+
+    /**
      * Tests for the removal methods, including:
      * clear()
      * remove(Object key)
@@ -554,7 +582,7 @@ public class TreeMapTests {
     }
 
     /**
-     * Tests for the set view methods, including:
+     * Tests for the set view methods for a map, including:
      * descendingKeySet()
      * entrySet()
      * keySet()
@@ -562,19 +590,62 @@ public class TreeMapTests {
      * values()
      */
     private static void setTests() {
-        // TODO
-    }
+        String[] arr0 = { "Bart", "Banana", "Coconut Creme Pie", "Advent", "Green Guitar", "Zzyzx",
+                "Spanish Spaghetti" };
+        Double[] arr1 = { 4.0, 2.2, 3.1415, 12.25, 6.669, 10.5, 3.45 };
 
-    /**
-     * Tests for the set view methods for a descending map, including:
-     * descendingKeySet()
-     * entrySet()
-     * keySet()
-     * navigableKeySet()
-     * values()
-     */
-    private static void setTestsDescending() {
-        // TODO
+        NavigableMap<String, Double> map = new TreeMap<String, Double>();
+        NavigableMap<String, Double> dmap = (new TreeMap<String, Double>()).descendingMap();
+        for (int i = 0; i < arr0.length; i++) {
+            map.put(arr0[i], arr1[i]);
+            dmap.put(arr0[i], arr1[i]);
+        }
+
+        NavigableMap<String, Double> smap = new TreeMap<String, Double>().subMap(map.firstKey(), true, map.lastKey(),
+                true);
+        smap.putAll(map);
+
+        List<String> l = Arrays.asList(arr0);
+        Set<String> keyset = new TreeSet<>();
+        keyset.addAll(l);
+
+        Collections.reverse(l);
+        Set<String> dkeyset = new TreeSet<>();
+        dkeyset.addAll(l);
+
+        Set<Double> valueSet = new TreeSet<>();
+        valueSet.addAll(Arrays.asList(arr1));
+
+        String expected = "true";
+        String actual = "" + keyset.equals(map.keySet());
+        printTest(expected, actual, "TreeMap keySet()");
+        actual = "" + keyset.equals(map.descendingKeySet());
+        printTest(expected, actual, "TreeMap descendingKeySet()");
+        actual = "" + map.navigableKeySet().equals(map.keySet());
+        printTest(expected, actual, "TreeMap navigableKeySet()");
+        actual = "" + map.navigableKeySet().equals(map.descendingKeySet().descendingSet());
+        printTest(expected, actual, "TreeMap descendingKeySet()");
+
+        actual = "" + keyset.equals(smap.keySet());
+        printTest(expected, actual, "SubTreeMap keySet()");
+        actual = "" + keyset.equals(smap.descendingKeySet());
+        printTest(expected, actual, "SubTreeMap descendingKeySet()");
+        actual = "" + smap.navigableKeySet().equals(map.navigableKeySet());
+        printTest(expected, actual, "SubTreeMap navigableKeySet()");
+        actual = "" + smap.navigableKeySet().equals(smap.descendingKeySet().descendingSet());
+        printTest(expected, actual, "SubTreeMap descendingKeySet()");
+
+        actual = "" + dkeyset.equals(dmap.keySet());
+        printTest(expected, actual, "DescendingTreeMap keySet()");
+        actual = "" + dkeyset.equals(dmap.descendingKeySet());
+        printTest(expected, actual, "DescendingTreeMap descendingKeySet()");
+        actual = "" + dmap.navigableKeySet().equals(dmap.keySet());
+        printTest(expected, actual, "DescendingTreeMap navigableKeySet()");
+        actual = "" + dmap.navigableKeySet().equals(map.descendingKeySet().descendingSet());
+        printTest(expected, actual, "DescendingTreeMap descendingKeySet()");
+
+        actual = "" + dmap.navigableKeySet().equals(map.descendingKeySet());
+        printTest(expected, actual, "DescendingTreeMap navigableKeySet()");
     }
 
     /**
