@@ -20,13 +20,21 @@ public class ShortestPath {
      * @param src the index of the source vertex
      * @return an ArrayList containing vertex objects which contain
      * the shortest distance and the path to the source node  
+     * 
+     * @exception NullPointerException if graph is null
+     * @exception IllegalArgumentException is src is invalid
      */
     public static ArrayList<Vertex<Integer, Double>> dijkstraDouble(Double[][] graph, int src) {
-        AdjacencyMatrix<Double> ret = new AdjacencyMatrix<>();
+        if (graph == null) {
+            throw new NullPointerException("graph cannot be null");
+        } else if (src < 0 || src > graph.length) {
+            throw new IllegalArgumentException("source node must be a valid index");
+        }
+
         SumFunction sum = (p1, p2) -> {
             return Double.sum(p1.doubleValue(), p2.doubleValue());
         };
-        return ret.dijkstra(graph, src, Double.MAX_VALUE, DOUBLE_DEFAULT, sum);
+        return ShortestPath.<Double>dijkstra(graph, src, Double.MAX_VALUE, DOUBLE_DEFAULT, sum);
     }
 
     /***
@@ -37,6 +45,9 @@ public class ShortestPath {
      * @param src the index of the source vertex
      * @return an ArrayList containing vertex objects which contain
      * the shortest distance and the path to the source node  
+     * 
+     * @exception NullPointerException if graph is null
+     * @exception IllegalArgumentException is src is invalid
      */
     public static ArrayList<Vertex<Integer, Double>> dijkstraDouble(double[][] graph, int src) {
         return ShortestPath.dijkstraDouble(toDouble(graph), src);
@@ -51,13 +62,21 @@ public class ShortestPath {
      * @param src the label of the source vertex
      * @return a Map that maps labels to vertex objects which contain
      * the shortest distance and the path to the source node  
+     * 
+     * @exception NullPointerException if graph is null
+     * @exception IllegalArgumentException is src is invalid
      */
     public static <T> Map<T, Vertex<T, Double>> dijkstraDouble(Map<T, Map<T, Double>> graph, T src) {
-        AdjacencyList<T, Double> ret = new AdjacencyList<>();
+        if (graph == null) {
+            throw new NullPointerException("graph cannot be null");
+        } else if (!graph.containsKey(src)) {
+            throw new IllegalArgumentException("source node must be a valid node");
+        }
+
         SumFunction sum = (p1, p2) -> {
             return Double.sum(p1.doubleValue(), p2.doubleValue());
         };
-        return ret.dijkstra(graph, src, Double.MAX_VALUE, DOUBLE_DEFAULT, sum);
+        return ShortestPath.<T, Double>dijkstra(graph, src, Double.MAX_VALUE, DOUBLE_DEFAULT, sum);
     }
     
     /***
@@ -68,13 +87,21 @@ public class ShortestPath {
      * @param src the index of the source vertex
      * @return an ArrayList containing vertex objects which contain
      * the shortest distance and the path to the source node  
+     * 
+     * @exception NullPointerException if graph is null
+     * @exception IllegalArgumentException is src is invalid
      */
     public static ArrayList<Vertex<Integer, Integer>> dijkstraInt(Integer[][] graph, int src) {
-        AdjacencyMatrix<Integer> ret = new AdjacencyMatrix<>();
+        if (graph == null) {
+            throw new NullPointerException("graph cannot be null");
+        } else if (src < 0 || src > graph.length) {
+            throw new IllegalArgumentException("source node must be a valid index");
+        }
+
         SumFunction sum = (p1, p2) -> {
             return Integer.sum(p1.intValue(), p2.intValue());
         };
-        return ret.dijkstra(graph, src, Integer.MAX_VALUE, INTEGER_DEFAULT, sum);
+        return ShortestPath.<Integer>dijkstra(graph, src, Integer.MAX_VALUE, INTEGER_DEFAULT, sum);
     }    
     
     /***
@@ -85,6 +112,9 @@ public class ShortestPath {
      * @param src the index of the source vertex
      * @return an ArrayList containing vertex objects which contain
      * the shortest distance and the path to the source node  
+     * 
+     * @exception NullPointerException if graph is null
+     * @exception IllegalArgumentException is src is invalid
      */
     public static ArrayList<Vertex<Integer, Integer>> dijkstraInt(int[][] graph, int src) {
         return ShortestPath.dijkstraInt(toInteger(graph), src);
@@ -99,13 +129,21 @@ public class ShortestPath {
      * @param src the label of the source vertex
      * @return a Map that maps labels to vertex objects which contain
      * the shortest distance and the path to the source node  
+     * 
+     * @exception NullPointerException if graph is null
+     * @exception IllegalArgumentException is src is invalid
      */
     public static <T> Map<T, Vertex<T, Integer>> dijkstraInt(Map<T, Map<T, Integer>> graph, T src) {
-        AdjacencyList<T, Integer> ret = new AdjacencyList<>();
+        if (graph == null) {
+            throw new NullPointerException("graph cannot be null");
+        } else if (!graph.containsKey(src)) {
+            throw new IllegalArgumentException("source node must be a valid node");
+        }
+
         SumFunction sum = (p1, p2) -> {
             return Integer.sum(p1.intValue(), p2.intValue());
         };
-        return ret.dijkstra(graph, src, Integer.MAX_VALUE, INTEGER_DEFAULT, sum);
+        return ShortestPath.<T, Integer>dijkstra(graph, src, Integer.MAX_VALUE, INTEGER_DEFAULT, sum);
     }
 
     /**
@@ -115,10 +153,12 @@ public class ShortestPath {
      * @param graph the adjacency matrix
      * @param labels the labels to be used in the adjacency list
      * @return the adjacency list
+     * 
+     * @exception NullPointerException if any parameters are null
+     * @exception IllegalArgumentException is labels is an invalid size
      */
     public static <T> Map<T, Map<T, Double>> toAdjList(Double[][] graph, T[] labels) {
-        AdjacencyList<T, Double> adj = new AdjacencyList<>();
-        return adj.toAdjList(graph, labels, 0.0);
+        return ShortestPath.<T, Double>toAdjList(graph, labels, 0.0);
     }
 
     /**
@@ -128,9 +168,12 @@ public class ShortestPath {
      * @param graph the adjacency matrix
      * @param labels the labels to be used in the adjacency list
      * @return the adjacency list
+     * 
+     * @exception NullPointerException if any parameters are null
+     * @exception IllegalArgumentException is labels is an invalid size
      */
     public static <T> Map<T, Map<T, Integer>> toAdjList(Integer[][] graph, T[] labels) {
-        return ShortestPath.<T, Integer>toAdjList.toAdjList(graph, labels, 0);
+        return ShortestPath.<T, Integer>toAdjList(graph, labels, 0);
     }
 
     /**
@@ -140,6 +183,9 @@ public class ShortestPath {
      * @param graph the adjacency matrix
      * @param labels the labels to be used in the adjacency list
      * @return the adjacency list
+     * 
+     * @exception NullPointerException if any parameters are null
+     * @exception IllegalArgumentException is labels is an invalid size
      */
     public static <T> Map<T, Map<T, Double>> toAdjList(double[][] graph, T[] labels) {
         return ShortestPath.<T>toAdjList(toDouble(graph), labels);
@@ -152,6 +198,9 @@ public class ShortestPath {
      * @param graph the adjacency matrix
      * @param labels the labels to be used in the adjacency list
      * @return the adjacency list
+     * 
+     * @exception NullPointerException if any parameters are null
+     * @exception IllegalArgumentException is labels is an invalid size
      */
     public static <T> Map<T, Map<T, Integer>> toAdjList(int[][] graph, T[] labels) {
         return ShortestPath.<T>toAdjList(toInteger(graph), labels);
@@ -169,7 +218,7 @@ public class ShortestPath {
      * @return an ArrayList containing vertex objects which contain
      * the shortest distance and the path to the source node  
      */
-    private ArrayList<Vertex<Integer, W>> dijkstra(W[][] graph, int src, W maxVal, W defaultVal, SumFunction func) {
+    private static <W extends Number & Comparable<W>> ArrayList<Vertex<Integer, W>> dijkstra(W[][] graph, int src, W maxVal, W defaultVal, SumFunction func) {
         ArrayList<Vertex<Integer, W>> vertices = new ArrayList<>();
         PriorityQueue<Vertex<Integer, W>> unvisited = new PriorityQueue<>();
         for (int key = 0; key < graph.length; key++) {
@@ -262,8 +311,18 @@ public class ShortestPath {
      * @param labels the labels to be used in the adjacency list
      * @param defaultValue the value that represents a non-edge
      * @return the adjacency list
+     * 
+     * @exception NullPointerException if any parameters are null
+     * @exception IllegalArgumentException is labels is an invalid size
      */
-    private <T, W extends Number & Comparable<W>> Map<T, Map<T, W>> toAdjList(W[][] matrix, T[] labels, W defaultValue) {
+    private static <T, W extends Number & Comparable<W>> Map<T, Map<T, W>> toAdjList(W[][] matrix, T[] labels, W defaultValue) {
+        if (matrix == null || labels == null) {
+            throw new NullPointerException("parameters cannot be null");
+        }
+        else if (matrix.length != labels.length) {
+            throw new IllegalArgumentException("labels and graph must be the same size");
+        }
+        
         Map<T, Map<T, W>> ret = new HashMap<>();
         for (int i = 0; i < matrix.length; i++) {
             Map<T, W> tmp = new HashMap<>();
